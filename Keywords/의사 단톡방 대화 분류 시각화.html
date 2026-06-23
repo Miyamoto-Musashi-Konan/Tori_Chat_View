@@ -1,0 +1,1869 @@
+<!DOCTYPE html>
+<!-- saved from url=(0050)file:///C:/Users/mdwin/Downloads/visualizer_1.html -->
+<html lang="ko"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>의사 단톡방 대화 분류 시각화</title>
+<style>
+  /* ── Design Tokens ── */
+  :root {
+    --bg:        #0d1117;
+    --surface:   #161b22;
+    --surface2:  #1c2430;
+    --border:    #30363d;
+    --accent:    #58a6ff;
+    --accent2:   #3fb950;
+    --accent3:   #f78166;
+    --accent4:   #d2a8ff;
+    --accent5:   #ffa657;
+    --text:      #e6edf3;
+    --text2:     #8b949e;
+    --text3:     #6e7681;
+    --tag-bg:    #21262d;
+
+    /* Category palette */
+    --c1: #58a6ff;  /* 미디어/뉴스 */
+    --c2: #3fb950;  /* 경제/투자 */
+    --c3: #f0883e;  /* 의학/의료 */
+    --c4: #d2a8ff;  /* 의원경영 */
+    --c5: #ff7b72;  /* 엔터테인먼트 */
+    --c6: #79c0ff;  /* 과학/기술 */
+    --c7: #a5d6ff;  /* 사회/이슈 */
+    --c8: #ffa657;  /* 파일/첨부 */
+    --c9: #56d364;  /* 유머/일상 */
+    --c10:#b3b3b3;  /* 기타 */
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+  .logo span { color: var(--accent); }
+  .subtitle {
+    color: var(--text2);
+    font-size: 12px;
+    margin-left: auto;
+  }
+
+  /* ── Layout ── */
+  .app-body {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    min-height: calc(100vh - 63px);
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 20px 0;
+    overflow-y: auto;
+    background: var(--surface);
+  }
+  .sidebar-section {
+    padding: 0 16px;
+    margin-bottom: 8px;
+  }
+  .sidebar-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text3);
+    padding: 12px 0 8px;
+  }
+
+  .cat-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 12px;
+    border: none;
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    border-radius: 6px;
+    text-align: left;
+    font-size: 13px;
+    transition: background 0.15s, color 0.15s;
+    margin-bottom: 2px;
+  }
+  .cat-btn:hover { background: var(--surface2); color: var(--text); }
+  .cat-btn.active { background: var(--surface2); color: var(--text); }
+  .cat-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .cat-count {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--text3);
+    background: var(--tag-bg);
+    padding: 1px 6px;
+    border-radius: 10px;
+    min-width: 28px;
+    text-align: center;
+  }
+
+  /* ── Main Panel ── */
+  .main {
+    padding: 28px 32px;
+    overflow-y: auto;
+  }
+
+  /* ── Top controls ── */
+  .controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  .controls-title {
+    font-size: 18px;
+    font-weight: 700;
+    flex: 1;
+    min-width: 200px;
+  }
+  select, input[type=range] {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  select:focus { outline: 1px solid var(--accent); }
+  .btn {
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text2);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.active { border-color: var(--accent); color: var(--accent); background: rgba(88,166,255,0.1); }
+
+  /* ── Upload area ── */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 40px;
+    text-align: center;
+    color: var(--text2);
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    margin-bottom: 28px;
+  }
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(88,166,255,0.05);
+  }
+  .upload-icon { font-size: 32px; margin-bottom: 12px; }
+  .upload-zone p { font-size: 13px; }
+  .upload-zone strong { color: var(--accent); }
+
+  /* ── Chart area ── */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 28px;
+  }
+  @media (max-width: 900px) { .charts-grid { grid-template-columns: 1fr; } }
+
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .chart-card.wide { grid-column: 1 / -1; }
+  .chart-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text2);
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  canvas { display: block; }
+
+  /* ── Tag cloud ── */
+  .tag-cloud {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: var(--tag-bg);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .tag:hover { border-color: var(--accent); color: var(--text); }
+  .tag.selected { border-color: var(--accent); color: var(--accent); background: rgba(88,166,255,0.1); }
+  .tag .cnt {
+    font-size: 10px;
+    color: var(--text3);
+    min-width: 14px;
+    text-align: center;
+  }
+
+  /* ── Table ── */
+  .results-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .results-table th {
+    padding: 10px 14px;
+    text-align: left;
+    color: var(--text3);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .results-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .results-table tr:hover td { background: var(--surface2); }
+
+  .bar-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .bar-fill {
+    height: 6px;
+    border-radius: 3px;
+    transition: width 0.4s ease;
+  }
+
+  /* ── Category detail ── */
+  .cat-detail {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .cat-detail h2 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .sub-list { list-style: none; }
+  .sub-item {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .sub-item:last-child { border-bottom: none; }
+  .sub-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text2);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .sub-badge {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    color: var(--text3);
+  }
+
+  /* ── Stats ── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  @media (max-width: 900px) { .stats-row { grid-template-columns: 1fr 1fr; } }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+  .stat-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .stat-value { font-size: 28px; font-weight: 700; line-height: 1; }
+  .stat-sub { font-size: 11px; color: var(--text2); margin-top: 4px; }
+
+  /* ── Timeline chart ── */
+  #timelineCanvas { width: 100%; }
+
+  /* ── Donut tooltip ── */
+  .donut-wrapper { position: relative; display: flex; gap: 20px; align-items: center; }
+  .legend { flex: 1; }
+  .legend-item { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 12px; cursor: pointer; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+  /* tabs */
+  .tabs { display: flex; gap: 4px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+  .tab {
+    padding: 8px 16px;
+    border: none;
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    font-size: 13px;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.15s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* Input area */
+  .input-area {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  textarea {
+    width: 100%;
+    min-height: 160px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 13px;
+    padding: 12px;
+    resize: vertical;
+    font-family: 'Consolas', 'D2Coding', monospace;
+    line-height: 1.5;
+  }
+  textarea:focus { outline: 1px solid var(--accent); }
+  .btn-primary {
+    padding: 8px 20px;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 10px;
+  }
+  .btn-primary:hover { opacity: 0.85; }
+
+  /* Notice */
+  .notice {
+    background: rgba(88,166,255,0.08);
+    border: 1px solid rgba(88,166,255,0.25);
+    border-radius: 8px;
+    padding: 14px 18px;
+    color: var(--text2);
+    font-size: 12px;
+    margin-bottom: 20px;
+    line-height: 1.7;
+  }
+  .notice strong { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Med<span>Chat</span>Lens</div>
+  <div style="color:var(--text3); font-size:12px;">의사 단톡방 대화 분류 시각화 · 2019–2026</div>
+  <div class="subtitle" id="lastUpdated">categories.txt v1.0 · 태그 약 450개</div>
+</header>
+
+<div class="app-body">
+
+  <!-- Sidebar: category navigation -->
+  <nav class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">카테고리</div>
+      <button class="cat-btn active" onclick="filterCat(&#39;ALL&#39;)" id="btn-ALL">
+        <span class="cat-dot" style="background:#555"></span>
+        전체
+        <span class="cat-count" id="cnt-ALL">39</span>
+      </button>
+    </div>
+    <div class="sidebar-section" id="catNavList"><button class="cat-btn" id="btn-MEDIA_NEWS"><span class="cat-dot" style="background:#58a6ff"></span>미디어/뉴스<span class="cat-count" id="cnt-MEDIA_NEWS">1</span></button><button class="cat-btn" id="btn-ECONOMY_INVEST"><span class="cat-dot" style="background:#3fb950"></span>경제/투자<span class="cat-count" id="cnt-ECONOMY_INVEST">8</span></button><button class="cat-btn" id="btn-MEDICAL"><span class="cat-dot" style="background:#f0883e"></span>의학/의료<span class="cat-count" id="cnt-MEDICAL">15</span></button><button class="cat-btn" id="btn-CLINIC_MGMT"><span class="cat-dot" style="background:#d2a8ff"></span>의원경영<span class="cat-count" id="cnt-CLINIC_MGMT">5</span></button><button class="cat-btn" id="btn-ENTERTAINMENT"><span class="cat-dot" style="background:#ff7b72"></span>엔터테인먼트<span class="cat-count" id="cnt-ENTERTAINMENT">3</span></button><button class="cat-btn" id="btn-SCIENCE_TECH"><span class="cat-dot" style="background:#79c0ff"></span>과학/기술<span class="cat-count" id="cnt-SCIENCE_TECH">4</span></button><button class="cat-btn" id="btn-SOCIAL_ISSUES"><span class="cat-dot" style="background:#a5d6ff"></span>사회/이슈<span class="cat-count" id="cnt-SOCIAL_ISSUES">2</span></button><button class="cat-btn" id="btn-FILE_ATTACHMENT"><span class="cat-dot" style="background:#ffa657"></span>파일/첨부<span class="cat-count" id="cnt-FILE_ATTACHMENT">0</span></button><button class="cat-btn" id="btn-HUMOR_DAILY"><span class="cat-dot" style="background:#56d364"></span>유머/일상<span class="cat-count" id="cnt-HUMOR_DAILY">1</span></button><button class="cat-btn" id="btn-ETC"><span class="cat-dot" style="background:#b3b3b3"></span>기타<span class="cat-count" id="cnt-ETC">0</span></button></div>
+  </nav>
+
+  <!-- Main content -->
+  <main class="main">
+
+    <div class="tabs">
+      <button class="tab active" onclick="showTab(&#39;overview&#39;)">개요</button>
+      <button class="tab" onclick="showTab(&#39;categories&#39;)">카테고리 상세</button>
+      <button class="tab" onclick="showTab(&#39;input&#39;)">데이터 입력</button>
+      <button class="tab" onclick="showTab(&#39;taxonomy&#39;)">분류 체계</button>
+    </div>
+
+    <!-- OVERVIEW TAB -->
+    <div class="panel active" id="tab-overview">
+
+      <div class="stats-row" id="statsRow">
+        <div class="stat-card">
+          <div class="stat-label">총 메시지</div>
+          <div class="stat-value" id="statTotal">39</div>
+          <div class="stat-sub">분석 대상 전체</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">카테고리</div>
+          <div class="stat-value" style="color:var(--accent)">10</div>
+          <div class="stat-sub">대분류 기준</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">서브카테고리</div>
+          <div class="stat-value" style="color:var(--accent2)">46</div>
+          <div class="stat-sub">소분류 기준</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">태그 수</div>
+          <div class="stat-value" style="color:var(--accent5)">~450</div>
+          <div class="stat-sub">categories.txt 기준</div>
+        </div>
+      </div>
+
+      <div class="charts-grid">
+        <!-- Donut chart -->
+        <div class="chart-card">
+          <div class="chart-title">카테고리 비율 분포</div>
+          <div class="donut-wrapper">
+            <canvas id="donutCanvas" width="200" height="200"></canvas>
+            <div class="legend" id="donutLegend"><div class="legend-item"><span class="legend-dot" style="background:#58a6ff"></span><span style="color:var(--text2)">미디어/뉴스</span><span style="margin-left:auto;color:var(--text3)">3%</span></div><div class="legend-item"><span class="legend-dot" style="background:#3fb950"></span><span style="color:var(--text2)">경제/투자</span><span style="margin-left:auto;color:var(--text3)">21%</span></div><div class="legend-item"><span class="legend-dot" style="background:#f0883e"></span><span style="color:var(--text2)">의학/의료</span><span style="margin-left:auto;color:var(--text3)">38%</span></div><div class="legend-item"><span class="legend-dot" style="background:#d2a8ff"></span><span style="color:var(--text2)">의원경영</span><span style="margin-left:auto;color:var(--text3)">13%</span></div><div class="legend-item"><span class="legend-dot" style="background:#ff7b72"></span><span style="color:var(--text2)">엔터테인먼트</span><span style="margin-left:auto;color:var(--text3)">8%</span></div><div class="legend-item"><span class="legend-dot" style="background:#79c0ff"></span><span style="color:var(--text2)">과학/기술</span><span style="margin-left:auto;color:var(--text3)">10%</span></div><div class="legend-item"><span class="legend-dot" style="background:#a5d6ff"></span><span style="color:var(--text2)">사회/이슈</span><span style="margin-left:auto;color:var(--text3)">5%</span></div><div class="legend-item"><span class="legend-dot" style="background:#ffa657"></span><span style="color:var(--text2)">파일/첨부</span><span style="margin-left:auto;color:var(--text3)">0%</span></div><div class="legend-item"><span class="legend-dot" style="background:#56d364"></span><span style="color:var(--text2)">유머/일상</span><span style="margin-left:auto;color:var(--text3)">3%</span></div><div class="legend-item"><span class="legend-dot" style="background:#b3b3b3"></span><span style="color:var(--text2)">기타</span><span style="margin-left:auto;color:var(--text3)">0%</span></div></div>
+          </div>
+        </div>
+
+        <!-- Bar chart -->
+        <div class="chart-card">
+          <div class="chart-title">카테고리별 메시지 수</div>
+          <canvas id="barCanvas" width="400" height="200"></canvas>
+        </div>
+
+        <!-- Timeline -->
+        <div class="chart-card wide">
+          <div class="chart-title">연도별 주제 변화 추이 (2019–2026)</div>
+          <canvas id="timelineCanvas" height="160" width="877"></canvas>
+        </div>
+      </div>
+
+      <!-- Tag cloud section -->
+      <div class="chart-card" id="tagCloudSection">
+        <div class="chart-title" id="tagCloudTitle">태그 클라우드 (전체)</div>
+        <div class="tag-cloud" id="tagCloud"><span class="tag" style="font-size:19px;opacity:1" onclick="filterTag(&#39;실&#39;)">실<span class="cnt">4</span></span><span class="tag" style="font-size:19px;opacity:1" onclick="filterTag(&#39;급여&#39;)">급여<span class="cnt">4</span></span><span class="tag" style="font-size:15px;opacity:0.75" onclick="filterTag(&#39;보톡스&#39;)">보톡스<span class="cnt">2</span></span><span class="tag" style="font-size:15px;opacity:0.75" onclick="filterTag(&#39;세미나&#39;)">세미나<span class="cnt">2</span></span><span class="tag" style="font-size:15px;opacity:0.75" onclick="filterTag(&#39;도매상&#39;)">도매상<span class="cnt">2</span></span><span class="tag" style="font-size:15px;opacity:0.75" onclick="filterTag(&#39;공동구매&#39;)">공동구매<span class="cnt">2</span></span><span class="tag" style="font-size:15px;opacity:0.75" onclick="filterTag(&#39;금&#39;)">금<span class="cnt">2</span></span><span class="tag" style="font-size:15px;opacity:0.75" onclick="filterTag(&#39;의대정원&#39;)">의대정원<span class="cnt">2</span></span><span class="tag" style="font-size:15px;opacity:0.75" onclick="filterTag(&#39;의협&#39;)">의협<span class="cnt">2</span></span><span class="tag" style="font-size:15px;opacity:0.75" onclick="filterTag(&#39;재건축&#39;)">재건축<span class="cnt">2</span></span><span class="tag" style="font-size:15px;opacity:0.75" onclick="filterTag(&#39;강남&#39;)">강남<span class="cnt">2</span></span><span class="tag" style="font-size:15px;opacity:0.75" onclick="filterTag(&#39;비만치료&#39;)">비만치료<span class="cnt">2</span></span><span class="tag" style="font-size:15px;opacity:0.75" onclick="filterTag(&#39;위고비&#39;)">위고비<span class="cnt">2</span></span><span class="tag" style="font-size:15px;opacity:0.75" onclick="filterTag(&#39;의료사고&#39;)">의료사고<span class="cnt">2</span></span><span class="tag" style="font-size:15px;opacity:0.75" onclick="filterTag(&#39;삭센다&#39;)">삭센다<span class="cnt">2</span></span><span class="tag" style="font-size:15px;opacity:0.75" onclick="filterTag(&#39;악성리뷰&#39;)">악성리뷰<span class="cnt">2</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;나보타&#39;)">나보타<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;코스피&#39;)">코스피<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;ETF&#39;)">ETF<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;레스틸렌&#39;)">레스틸렌<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;신약&#39;)">신약<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;논문&#39;)">논문<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;NEJM&#39;)">NEJM<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;매일경제&#39;)">매일경제<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;금리&#39;)">금리<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;원격진료&#39;)">원격진료<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;비대면진료&#39;)">비대면진료<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;넷플릭스&#39;)">넷플릭스<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;드라마&#39;)">드라마<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;울쎄라&#39;)">울쎄라<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;슈링크&#39;)">슈링크<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;아파트&#39;)">아파트<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;청약&#39;)">청약<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;ChatGPT&#39;)">ChatGPT<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;AI의료&#39;)">AI의료<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;야구&#39;)">야구<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;KBO&#39;)">KBO<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;네이버광고&#39;)">네이버광고<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;SNS마케팅&#39;)">SNS마케팅<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;광고&#39;)">광고<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;판례&#39;)">판례<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;PDF&#39;)">PDF<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;코스닥&#39;)">코스닥<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;개별종목&#39;)">개별종목<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;테마주&#39;)">테마주<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;공시&#39;)">공시<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;레이저&#39;)">레이저<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;피코레이저&#39;)">피코레이저<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;색소치료&#39;)">색소치료<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;JPG&#39;)">JPG<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;일본&#39;)">일본<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;맛집&#39;)">맛집<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;사케&#39;)">사케<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;EMR&#39;)">EMR<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;암호화폐&#39;)">암호화폐<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;비트코인&#39;)">비트코인<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;전공의&#39;)">전공의<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;마운자로&#39;)">마운자로<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;체중감량&#39;)">체중감량<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;구글리뷰&#39;)">구글리뷰<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;라이브서저리&#39;)">라이브서저리<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;IMCAS&#39;)">IMCAS<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;AS&#39;)">AS<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;종합소득세&#39;)">종합소득세<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;절세&#39;)">절세<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;세무사&#39;)">세무사<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;절세전략&#39;)">절세전략<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;RF&#39;)">RF<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;인모드&#39;)">인모드<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;포텐자&#39;)">포텐자<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;개그&#39;)">개그<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;저출생&#39;)">저출생<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;고령화&#39;)">고령화<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;연금&#39;)">연금<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;국민연금&#39;)">국민연금<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;앨러간&#39;)">앨러간<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;메디톡스&#39;)">메디톡스<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;환율&#39;)">환율<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;달러&#39;)">달러<span class="cnt">1</span></span><span class="tag" style="font-size:13px;opacity:0.625" onclick="filterTag(&#39;미국주식&#39;)">미국주식<span class="cnt">1</span></span></div>
+      </div>
+
+    </div>
+
+    <!-- CATEGORIES TAB -->
+    <div class="panel" id="tab-categories">
+      <div id="catDetailArea">
+    <div class="cat-detail" style="border-left: 3px solid #58a6ff">
+      <h2 style="color:#58a6ff">미디어/뉴스</h2>
+      <div style="color:var(--text3);font-size:12px;margin-bottom:4px">MEDIA_NEWS</div>
+      <div id="catstat-MEDIA_NEWS" style="font-size:13px;color:var(--text2);margin-bottom:14px">메시지 수: 1건 (3%)</div>
+      <ul class="sub-list">
+        
+          <li class="sub-item">
+            <div class="sub-name">일간지 <span class="sub-badge" id="substat-DAILY_NEWSPAPER">0건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-조선일보" onclick="filterTag(&#39;조선일보&#39;)">조선일보<span class="cnt" id="tcnt-조선일보">0</span></span><span class="tag" id="tag-중앙일보" onclick="filterTag(&#39;중앙일보&#39;)">중앙일보<span class="cnt" id="tcnt-중앙일보">0</span></span><span class="tag" id="tag-동아일보" onclick="filterTag(&#39;동아일보&#39;)">동아일보<span class="cnt" id="tcnt-동아일보">0</span></span><span class="tag" id="tag-한겨레" onclick="filterTag(&#39;한겨레&#39;)">한겨레<span class="cnt" id="tcnt-한겨레">0</span></span><span class="tag" id="tag-경향신문" onclick="filterTag(&#39;경향신문&#39;)">경향신문<span class="cnt" id="tcnt-경향신문">0</span></span><span class="tag" id="tag-한국일보" onclick="filterTag(&#39;한국일보&#39;)">한국일보<span class="cnt" id="tcnt-한국일보">0</span></span><span class="tag" id="tag-국민일보" onclick="filterTag(&#39;국민일보&#39;)">국민일보<span class="cnt" id="tcnt-국민일보">0</span></span><span class="tag" id="tag-서울신문" onclick="filterTag(&#39;서울신문&#39;)">서울신문<span class="cnt" id="tcnt-서울신문">0</span></span><span class="tag" id="tag-세계일보" onclick="filterTag(&#39;세계일보&#39;)">세계일보<span class="cnt" id="tcnt-세계일보">0</span></span><span class="tag" id="tag-문화일보" onclick="filterTag(&#39;문화일보&#39;)">문화일보<span class="cnt" id="tcnt-문화일보">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">경제지 <span class="sub-badge" id="substat-ECONOMIC_NEWSPAPER">1건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-한국경제" onclick="filterTag(&#39;한국경제&#39;)">한국경제<span class="cnt" id="tcnt-한국경제">0</span></span><span class="tag" id="tag-매일경제" onclick="filterTag(&#39;매일경제&#39;)">매일경제<span class="cnt" id="tcnt-매일경제">1</span></span><span class="tag" id="tag-머니투데이" onclick="filterTag(&#39;머니투데이&#39;)">머니투데이<span class="cnt" id="tcnt-머니투데이">0</span></span><span class="tag" id="tag-이데일리" onclick="filterTag(&#39;이데일리&#39;)">이데일리<span class="cnt" id="tcnt-이데일리">0</span></span><span class="tag" id="tag-아시아경제" onclick="filterTag(&#39;아시아경제&#39;)">아시아경제<span class="cnt" id="tcnt-아시아경제">0</span></span><span class="tag" id="tag-헤럴드경제" onclick="filterTag(&#39;헤럴드경제&#39;)">헤럴드경제<span class="cnt" id="tcnt-헤럴드경제">0</span></span><span class="tag" id="tag-파이낸셜뉴스" onclick="filterTag(&#39;파이낸셜뉴스&#39;)">파이낸셜뉴스<span class="cnt" id="tcnt-파이낸셜뉴스">0</span></span><span class="tag" id="tag-서울경제" onclick="filterTag(&#39;서울경제&#39;)">서울경제<span class="cnt" id="tcnt-서울경제">0</span></span><span class="tag" id="tag-이코노미스트" onclick="filterTag(&#39;이코노미스트&#39;)">이코노미스트<span class="cnt" id="tcnt-이코노미스트">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">주간지 <span class="sub-badge" id="substat-WEEKLY_MAGAZINE">0건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-시사IN" onclick="filterTag(&#39;시사IN&#39;)">시사IN<span class="cnt" id="tcnt-시사IN">0</span></span><span class="tag" id="tag-주간조선" onclick="filterTag(&#39;주간조선&#39;)">주간조선<span class="cnt" id="tcnt-주간조선">0</span></span><span class="tag" id="tag-주간동아" onclick="filterTag(&#39;주간동아&#39;)">주간동아<span class="cnt" id="tcnt-주간동아">0</span></span><span class="tag" id="tag-주간경향" onclick="filterTag(&#39;주간경향&#39;)">주간경향<span class="cnt" id="tcnt-주간경향">0</span></span><span class="tag" id="tag-한겨레21" onclick="filterTag(&#39;한겨레21&#39;)">한겨레21<span class="cnt" id="tcnt-한겨레21">0</span></span><span class="tag" id="tag-뉴스위크코리아" onclick="filterTag(&#39;뉴스위크코리아&#39;)">뉴스위크코리아<span class="cnt" id="tcnt-뉴스위크코리아">0</span></span><span class="tag" id="tag-시사저널" onclick="filterTag(&#39;시사저널&#39;)">시사저널<span class="cnt" id="tcnt-시사저널">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">월간지 <span class="sub-badge" id="substat-MONTHLY_MAGAZINE">0건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-신동아" onclick="filterTag(&#39;신동아&#39;)">신동아<span class="cnt" id="tcnt-신동아">0</span></span><span class="tag" id="tag-월간조선" onclick="filterTag(&#39;월간조선&#39;)">월간조선<span class="cnt" id="tcnt-월간조선">0</span></span><span class="tag" id="tag-월간중앙" onclick="filterTag(&#39;월간중앙&#39;)">월간중앙<span class="cnt" id="tcnt-월간중앙">0</span></span><span class="tag" id="tag-샘터" onclick="filterTag(&#39;샘터&#39;)">샘터<span class="cnt" id="tcnt-샘터">0</span></span><span class="tag" id="tag-뿌리깊은나무" onclick="filterTag(&#39;뿌리깊은나무&#39;)">뿌리깊은나무<span class="cnt" id="tcnt-뿌리깊은나무">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">방송뉴스 <span class="sub-badge" id="substat-BROADCAST_NEWS">0건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-KBS" onclick="filterTag(&#39;KBS&#39;)">KBS<span class="cnt" id="tcnt-KBS">0</span></span><span class="tag" id="tag-MBC" onclick="filterTag(&#39;MBC&#39;)">MBC<span class="cnt" id="tcnt-MBC">0</span></span><span class="tag" id="tag-SBS" onclick="filterTag(&#39;SBS&#39;)">SBS<span class="cnt" id="tcnt-SBS">0</span></span><span class="tag" id="tag-JTBC" onclick="filterTag(&#39;JTBC&#39;)">JTBC<span class="cnt" id="tcnt-JTBC">0</span></span><span class="tag" id="tag-TV조선" onclick="filterTag(&#39;TV조선&#39;)">TV조선<span class="cnt" id="tcnt-TV조선">0</span></span><span class="tag" id="tag-채널A" onclick="filterTag(&#39;채널A&#39;)">채널A<span class="cnt" id="tcnt-채널A">0</span></span><span class="tag" id="tag-MBN" onclick="filterTag(&#39;MBN&#39;)">MBN<span class="cnt" id="tcnt-MBN">0</span></span><span class="tag" id="tag-YTN" onclick="filterTag(&#39;YTN&#39;)">YTN<span class="cnt" id="tcnt-YTN">0</span></span><span class="tag" id="tag-연합뉴스TV" onclick="filterTag(&#39;연합뉴스TV&#39;)">연합뉴스TV<span class="cnt" id="tcnt-연합뉴스TV">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">온라인뉴스 <span class="sub-badge" id="substat-ONLINE_NEWS">0건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-네이버뉴스" onclick="filterTag(&#39;네이버뉴스&#39;)">네이버뉴스<span class="cnt" id="tcnt-네이버뉴스">0</span></span><span class="tag" id="tag-다음뉴스" onclick="filterTag(&#39;다음뉴스&#39;)">다음뉴스<span class="cnt" id="tcnt-다음뉴스">0</span></span><span class="tag" id="tag-카카오뉴스" onclick="filterTag(&#39;카카오뉴스&#39;)">카카오뉴스<span class="cnt" id="tcnt-카카오뉴스">0</span></span><span class="tag" id="tag-유튜브뉴스" onclick="filterTag(&#39;유튜브뉴스&#39;)">유튜브뉴스<span class="cnt" id="tcnt-유튜브뉴스">0</span></span><span class="tag" id="tag-뉴스레터" onclick="filterTag(&#39;뉴스레터&#39;)">뉴스레터<span class="cnt" id="tcnt-뉴스레터">0</span></span><span class="tag" id="tag-해외언론" onclick="filterTag(&#39;해외언론&#39;)">해외언론<span class="cnt" id="tcnt-해외언론">0</span></span><span class="tag" id="tag-BBC" onclick="filterTag(&#39;BBC&#39;)">BBC<span class="cnt" id="tcnt-BBC">0</span></span><span class="tag" id="tag-CNN" onclick="filterTag(&#39;CNN&#39;)">CNN<span class="cnt" id="tcnt-CNN">0</span></span><span class="tag" id="tag-NYT" onclick="filterTag(&#39;NYT&#39;)">NYT<span class="cnt" id="tcnt-NYT">0</span></span></div>
+          </li>
+        
+      </ul>
+    </div>
+  
+    <div class="cat-detail" style="border-left: 3px solid #3fb950">
+      <h2 style="color:#3fb950">경제/투자</h2>
+      <div style="color:var(--text3);font-size:12px;margin-bottom:4px">ECONOMY_INVEST</div>
+      <div id="catstat-ECONOMY_INVEST" style="font-size:13px;color:var(--text2);margin-bottom:14px">메시지 수: 8건 (21%)</div>
+      <ul class="sub-list">
+        
+          <li class="sub-item">
+            <div class="sub-name">경제일반 <span class="sub-badge" id="substat-MACRO_ECONOMY">1건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-금리" onclick="filterTag(&#39;금리&#39;)">금리<span class="cnt" id="tcnt-금리">1</span></span><span class="tag" id="tag-환율" onclick="filterTag(&#39;환율&#39;)">환율<span class="cnt" id="tcnt-환율">1</span></span><span class="tag" id="tag-물가" onclick="filterTag(&#39;물가&#39;)">물가<span class="cnt" id="tcnt-물가">0</span></span><span class="tag" id="tag-인플레이션" onclick="filterTag(&#39;인플레이션&#39;)">인플레이션<span class="cnt" id="tcnt-인플레이션">0</span></span><span class="tag" id="tag-GDP" onclick="filterTag(&#39;GDP&#39;)">GDP<span class="cnt" id="tcnt-GDP">0</span></span><span class="tag" id="tag-무역" onclick="filterTag(&#39;무역&#39;)">무역<span class="cnt" id="tcnt-무역">0</span></span><span class="tag" id="tag-경기침체" onclick="filterTag(&#39;경기침체&#39;)">경기침체<span class="cnt" id="tcnt-경기침체">0</span></span><span class="tag" id="tag-재정정책" onclick="filterTag(&#39;재정정책&#39;)">재정정책<span class="cnt" id="tcnt-재정정책">0</span></span><span class="tag" id="tag-통화정책" onclick="filterTag(&#39;통화정책&#39;)">통화정책<span class="cnt" id="tcnt-통화정책">0</span></span><span class="tag" id="tag-한국은행" onclick="filterTag(&#39;한국은행&#39;)">한국은행<span class="cnt" id="tcnt-한국은행">0</span></span><span class="tag" id="tag-연준" onclick="filterTag(&#39;연준&#39;)">연준<span class="cnt" id="tcnt-연준">0</span></span><span class="tag" id="tag-달러" onclick="filterTag(&#39;달러&#39;)">달러<span class="cnt" id="tcnt-달러">1</span></span><span class="tag" id="tag-엔화" onclick="filterTag(&#39;엔화&#39;)">엔화<span class="cnt" id="tcnt-엔화">0</span></span><span class="tag" id="tag-위안화" onclick="filterTag(&#39;위안화&#39;)">위안화<span class="cnt" id="tcnt-위안화">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">주식 <span class="sub-badge" id="substat-STOCK_MARKET">2건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-코스피" onclick="filterTag(&#39;코스피&#39;)">코스피<span class="cnt" id="tcnt-코스피">1</span></span><span class="tag" id="tag-코스닥" onclick="filterTag(&#39;코스닥&#39;)">코스닥<span class="cnt" id="tcnt-코스닥">1</span></span><span class="tag" id="tag-나스닥" onclick="filterTag(&#39;나스닥&#39;)">나스닥<span class="cnt" id="tcnt-나스닥">0</span></span><span class="tag" id="tag-NYSE" onclick="filterTag(&#39;NYSE&#39;)">NYSE<span class="cnt" id="tcnt-NYSE">0</span></span><span class="tag" id="tag-S&amp;P500" onclick="filterTag(&#39;S&amp;P500&#39;)">S&amp;P500<span class="cnt" id="tcnt-S&amp;P500">0</span></span><span class="tag" id="tag-개별종목" onclick="filterTag(&#39;개별종목&#39;)">개별종목<span class="cnt" id="tcnt-개별종목">1</span></span><span class="tag" id="tag-공매도" onclick="filterTag(&#39;공매도&#39;)">공매도<span class="cnt" id="tcnt-공매도">0</span></span><span class="tag" id="tag-ETF" onclick="filterTag(&#39;ETF&#39;)">ETF<span class="cnt" id="tcnt-ETF">1</span></span><span class="tag" id="tag-ELS" onclick="filterTag(&#39;ELS&#39;)">ELS<span class="cnt" id="tcnt-ELS">0</span></span><span class="tag" id="tag-테마주" onclick="filterTag(&#39;테마주&#39;)">테마주<span class="cnt" id="tcnt-테마주">1</span></span><span class="tag" id="tag-배당주" onclick="filterTag(&#39;배당주&#39;)">배당주<span class="cnt" id="tcnt-배당주">0</span></span><span class="tag" id="tag-성장주" onclick="filterTag(&#39;성장주&#39;)">성장주<span class="cnt" id="tcnt-성장주">0</span></span><span class="tag" id="tag-가치주" onclick="filterTag(&#39;가치주&#39;)">가치주<span class="cnt" id="tcnt-가치주">0</span></span><span class="tag" id="tag-차트분석" onclick="filterTag(&#39;차트분석&#39;)">차트분석<span class="cnt" id="tcnt-차트분석">0</span></span><span class="tag" id="tag-기본분석" onclick="filterTag(&#39;기본분석&#39;)">기본분석<span class="cnt" id="tcnt-기본분석">0</span></span><span class="tag" id="tag-공시" onclick="filterTag(&#39;공시&#39;)">공시<span class="cnt" id="tcnt-공시">1</span></span><span class="tag" id="tag-실적" onclick="filterTag(&#39;실적&#39;)">실적<span class="cnt" id="tcnt-실적">0</span></span><span class="tag" id="tag-PER" onclick="filterTag(&#39;PER&#39;)">PER<span class="cnt" id="tcnt-PER">0</span></span><span class="tag" id="tag-PBR" onclick="filterTag(&#39;PBR&#39;)">PBR<span class="cnt" id="tcnt-PBR">0</span></span><span class="tag" id="tag-ROE" onclick="filterTag(&#39;ROE&#39;)">ROE<span class="cnt" id="tcnt-ROE">0</span></span><span class="tag" id="tag-외국인매매" onclick="filterTag(&#39;외국인매매&#39;)">외국인매매<span class="cnt" id="tcnt-외국인매매">0</span></span><span class="tag" id="tag-기관매매" onclick="filterTag(&#39;기관매매&#39;)">기관매매<span class="cnt" id="tcnt-기관매매">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">부동산 <span class="sub-badge" id="substat-REAL_ESTATE">3건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-아파트" onclick="filterTag(&#39;아파트&#39;)">아파트<span class="cnt" id="tcnt-아파트">1</span></span><span class="tag" id="tag-분양" onclick="filterTag(&#39;분양&#39;)">분양<span class="cnt" id="tcnt-분양">0</span></span><span class="tag" id="tag-재건축" onclick="filterTag(&#39;재건축&#39;)">재건축<span class="cnt" id="tcnt-재건축">2</span></span><span class="tag" id="tag-재개발" onclick="filterTag(&#39;재개발&#39;)">재개발<span class="cnt" id="tcnt-재개발">0</span></span><span class="tag" id="tag-청약" onclick="filterTag(&#39;청약&#39;)">청약<span class="cnt" id="tcnt-청약">1</span></span><span class="tag" id="tag-전세" onclick="filterTag(&#39;전세&#39;)">전세<span class="cnt" id="tcnt-전세">0</span></span><span class="tag" id="tag-월세" onclick="filterTag(&#39;월세&#39;)">월세<span class="cnt" id="tcnt-월세">0</span></span><span class="tag" id="tag-갭투자" onclick="filterTag(&#39;갭투자&#39;)">갭투자<span class="cnt" id="tcnt-갭투자">0</span></span><span class="tag" id="tag-경매" onclick="filterTag(&#39;경매&#39;)">경매<span class="cnt" id="tcnt-경매">1</span></span><span class="tag" id="tag-공시지가" onclick="filterTag(&#39;공시지가&#39;)">공시지가<span class="cnt" id="tcnt-공시지가">0</span></span><span class="tag" id="tag-취득세" onclick="filterTag(&#39;취득세&#39;)">취득세<span class="cnt" id="tcnt-취득세">0</span></span><span class="tag" id="tag-양도세" onclick="filterTag(&#39;양도세&#39;)">양도세<span class="cnt" id="tcnt-양도세">0</span></span><span class="tag" id="tag-임대사업자" onclick="filterTag(&#39;임대사업자&#39;)">임대사업자<span class="cnt" id="tcnt-임대사업자">0</span></span><span class="tag" id="tag-토지" onclick="filterTag(&#39;토지&#39;)">토지<span class="cnt" id="tcnt-토지">0</span></span><span class="tag" id="tag-상가" onclick="filterTag(&#39;상가&#39;)">상가<span class="cnt" id="tcnt-상가">1</span></span><span class="tag" id="tag-오피스텔" onclick="filterTag(&#39;오피스텔&#39;)">오피스텔<span class="cnt" id="tcnt-오피스텔">0</span></span><span class="tag" id="tag-빌딩" onclick="filterTag(&#39;빌딩&#39;)">빌딩<span class="cnt" id="tcnt-빌딩">1</span></span><span class="tag" id="tag-GTX" onclick="filterTag(&#39;GTX&#39;)">GTX<span class="cnt" id="tcnt-GTX">1</span></span><span class="tag" id="tag-개발호재" onclick="filterTag(&#39;개발호재&#39;)">개발호재<span class="cnt" id="tcnt-개발호재">1</span></span><span class="tag" id="tag-규제" onclick="filterTag(&#39;규제&#39;)">규제<span class="cnt" id="tcnt-규제">0</span></span><span class="tag" id="tag-LTV" onclick="filterTag(&#39;LTV&#39;)">LTV<span class="cnt" id="tcnt-LTV">0</span></span><span class="tag" id="tag-DSR" onclick="filterTag(&#39;DSR&#39;)">DSR<span class="cnt" id="tcnt-DSR">0</span></span><span class="tag" id="tag-강남" onclick="filterTag(&#39;강남&#39;)">강남<span class="cnt" id="tcnt-강남">2</span></span><span class="tag" id="tag-서울" onclick="filterTag(&#39;서울&#39;)">서울<span class="cnt" id="tcnt-서울">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">대체투자 <span class="sub-badge" id="substat-ALTERNATIVE">1건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-암호화폐" onclick="filterTag(&#39;암호화폐&#39;)">암호화폐<span class="cnt" id="tcnt-암호화폐">1</span></span><span class="tag" id="tag-비트코인" onclick="filterTag(&#39;비트코인&#39;)">비트코인<span class="cnt" id="tcnt-비트코인">1</span></span><span class="tag" id="tag-이더리움" onclick="filterTag(&#39;이더리움&#39;)">이더리움<span class="cnt" id="tcnt-이더리움">0</span></span><span class="tag" id="tag-금" onclick="filterTag(&#39;금&#39;)">금<span class="cnt" id="tcnt-금">2</span></span><span class="tag" id="tag-원자재" onclick="filterTag(&#39;원자재&#39;)">원자재<span class="cnt" id="tcnt-원자재">0</span></span><span class="tag" id="tag-원유" onclick="filterTag(&#39;원유&#39;)">원유<span class="cnt" id="tcnt-원유">0</span></span><span class="tag" id="tag-채권" onclick="filterTag(&#39;채권&#39;)">채권<span class="cnt" id="tcnt-채권">0</span></span><span class="tag" id="tag-사모펀드" onclick="filterTag(&#39;사모펀드&#39;)">사모펀드<span class="cnt" id="tcnt-사모펀드">0</span></span><span class="tag" id="tag-VC" onclick="filterTag(&#39;VC&#39;)">VC<span class="cnt" id="tcnt-VC">0</span></span><span class="tag" id="tag-스타트업투자" onclick="filterTag(&#39;스타트업투자&#39;)">스타트업투자<span class="cnt" id="tcnt-스타트업투자">0</span></span><span class="tag" id="tag-해외주식" onclick="filterTag(&#39;해외주식&#39;)">해외주식<span class="cnt" id="tcnt-해외주식">0</span></span><span class="tag" id="tag-미국주식" onclick="filterTag(&#39;미국주식&#39;)">미국주식<span class="cnt" id="tcnt-미국주식">1</span></span><span class="tag" id="tag-일본주식" onclick="filterTag(&#39;일본주식&#39;)">일본주식<span class="cnt" id="tcnt-일본주식">0</span></span><span class="tag" id="tag-중국주식" onclick="filterTag(&#39;중국주식&#39;)">중국주식<span class="cnt" id="tcnt-중국주식">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">세금/재무 <span class="sub-badge" id="substat-TAX_FINANCE">1건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-종합소득세" onclick="filterTag(&#39;종합소득세&#39;)">종합소득세<span class="cnt" id="tcnt-종합소득세">1</span></span><span class="tag" id="tag-양도소득세" onclick="filterTag(&#39;양도소득세&#39;)">양도소득세<span class="cnt" id="tcnt-양도소득세">0</span></span><span class="tag" id="tag-법인세" onclick="filterTag(&#39;법인세&#39;)">법인세<span class="cnt" id="tcnt-법인세">0</span></span><span class="tag" id="tag-절세" onclick="filterTag(&#39;절세&#39;)">절세<span class="cnt" id="tcnt-절세">1</span></span><span class="tag" id="tag-세무사" onclick="filterTag(&#39;세무사&#39;)">세무사<span class="cnt" id="tcnt-세무사">1</span></span><span class="tag" id="tag-회계사" onclick="filterTag(&#39;회계사&#39;)">회계사<span class="cnt" id="tcnt-회계사">0</span></span><span class="tag" id="tag-법인설립" onclick="filterTag(&#39;법인설립&#39;)">법인설립<span class="cnt" id="tcnt-법인설립">0</span></span><span class="tag" id="tag-금융소득" onclick="filterTag(&#39;금융소득&#39;)">금융소득<span class="cnt" id="tcnt-금융소득">0</span></span><span class="tag" id="tag-건강보험료" onclick="filterTag(&#39;건강보험료&#39;)">건강보험료<span class="cnt" id="tcnt-건강보험료">0</span></span><span class="tag" id="tag-피부양자" onclick="filterTag(&#39;피부양자&#39;)">피부양자<span class="cnt" id="tcnt-피부양자">0</span></span><span class="tag" id="tag-증여" onclick="filterTag(&#39;증여&#39;)">증여<span class="cnt" id="tcnt-증여">0</span></span><span class="tag" id="tag-상속" onclick="filterTag(&#39;상속&#39;)">상속<span class="cnt" id="tcnt-상속">0</span></span><span class="tag" id="tag-절세전략" onclick="filterTag(&#39;절세전략&#39;)">절세전략<span class="cnt" id="tcnt-절세전략">1</span></span></div>
+          </li>
+        
+      </ul>
+    </div>
+  
+    <div class="cat-detail" style="border-left: 3px solid #f0883e">
+      <h2 style="color:#f0883e">의학/의료</h2>
+      <div style="color:var(--text3);font-size:12px;margin-bottom:4px">MEDICAL</div>
+      <div id="catstat-MEDICAL" style="font-size:13px;color:var(--text2);margin-bottom:14px">메시지 수: 15건 (38%)</div>
+      <ul class="sub-list">
+        
+          <li class="sub-item">
+            <div class="sub-name">의학뉴스/정책 <span class="sub-badge" id="substat-MEDICAL_NEWS">3건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-건강보험" onclick="filterTag(&#39;건강보험&#39;)">건강보험<span class="cnt" id="tcnt-건강보험">0</span></span><span class="tag" id="tag-급여" onclick="filterTag(&#39;급여&#39;)">급여<span class="cnt" id="tcnt-급여">4</span></span><span class="tag" id="tag-비급여" onclick="filterTag(&#39;비급여&#39;)">비급여<span class="cnt" id="tcnt-비급여">1</span></span><span class="tag" id="tag-의료법" onclick="filterTag(&#39;의료법&#39;)">의료법<span class="cnt" id="tcnt-의료법">0</span></span><span class="tag" id="tag-의정갈등" onclick="filterTag(&#39;의정갈등&#39;)">의정갈등<span class="cnt" id="tcnt-의정갈등">0</span></span><span class="tag" id="tag-의사파업" onclick="filterTag(&#39;의사파업&#39;)">의사파업<span class="cnt" id="tcnt-의사파업">0</span></span><span class="tag" id="tag-전공의" onclick="filterTag(&#39;전공의&#39;)">전공의<span class="cnt" id="tcnt-전공의">1</span></span><span class="tag" id="tag-의대정원" onclick="filterTag(&#39;의대정원&#39;)">의대정원<span class="cnt" id="tcnt-의대정원">2</span></span><span class="tag" id="tag-심평원" onclick="filterTag(&#39;심평원&#39;)">심평원<span class="cnt" id="tcnt-심평원">0</span></span><span class="tag" id="tag-복지부" onclick="filterTag(&#39;복지부&#39;)">복지부<span class="cnt" id="tcnt-복지부">0</span></span><span class="tag" id="tag-식약처" onclick="filterTag(&#39;식약처&#39;)">식약처<span class="cnt" id="tcnt-식약처">0</span></span><span class="tag" id="tag-의료사고" onclick="filterTag(&#39;의료사고&#39;)">의료사고<span class="cnt" id="tcnt-의료사고">2</span></span><span class="tag" id="tag-판례" onclick="filterTag(&#39;판례&#39;)">판례<span class="cnt" id="tcnt-판례">1</span></span><span class="tag" id="tag-의료분쟁" onclick="filterTag(&#39;의료분쟁&#39;)">의료분쟁<span class="cnt" id="tcnt-의료분쟁">0</span></span><span class="tag" id="tag-의협" onclick="filterTag(&#39;의협&#39;)">의협<span class="cnt" id="tcnt-의협">2</span></span><span class="tag" id="tag-가이드라인" onclick="filterTag(&#39;가이드라인&#39;)">가이드라인<span class="cnt" id="tcnt-가이드라인">0</span></span><span class="tag" id="tag-임상시험" onclick="filterTag(&#39;임상시험&#39;)">임상시험<span class="cnt" id="tcnt-임상시험">0</span></span><span class="tag" id="tag-신약허가" onclick="filterTag(&#39;신약허가&#39;)">신약허가<span class="cnt" id="tcnt-신약허가">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">임상의학 <span class="sub-badge" id="substat-CLINICAL">0건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-내과" onclick="filterTag(&#39;내과&#39;)">내과<span class="cnt" id="tcnt-내과">0</span></span><span class="tag" id="tag-외과" onclick="filterTag(&#39;외과&#39;)">외과<span class="cnt" id="tcnt-외과">0</span></span><span class="tag" id="tag-피부과" onclick="filterTag(&#39;피부과&#39;)">피부과<span class="cnt" id="tcnt-피부과">0</span></span><span class="tag" id="tag-가정의학과" onclick="filterTag(&#39;가정의학과&#39;)">가정의학과<span class="cnt" id="tcnt-가정의학과">0</span></span><span class="tag" id="tag-신경과" onclick="filterTag(&#39;신경과&#39;)">신경과<span class="cnt" id="tcnt-신경과">0</span></span><span class="tag" id="tag-정형외과" onclick="filterTag(&#39;정형외과&#39;)">정형외과<span class="cnt" id="tcnt-정형외과">0</span></span><span class="tag" id="tag-산부인과" onclick="filterTag(&#39;산부인과&#39;)">산부인과<span class="cnt" id="tcnt-산부인과">0</span></span><span class="tag" id="tag-소아과" onclick="filterTag(&#39;소아과&#39;)">소아과<span class="cnt" id="tcnt-소아과">0</span></span><span class="tag" id="tag-안과" onclick="filterTag(&#39;안과&#39;)">안과<span class="cnt" id="tcnt-안과">0</span></span><span class="tag" id="tag-이비인후과" onclick="filterTag(&#39;이비인후과&#39;)">이비인후과<span class="cnt" id="tcnt-이비인후과">0</span></span><span class="tag" id="tag-비뇨기과" onclick="filterTag(&#39;비뇨기과&#39;)">비뇨기과<span class="cnt" id="tcnt-비뇨기과">0</span></span><span class="tag" id="tag-정신건강의학과" onclick="filterTag(&#39;정신건강의학과&#39;)">정신건강의학과<span class="cnt" id="tcnt-정신건강의학과">0</span></span><span class="tag" id="tag-진단검사" onclick="filterTag(&#39;진단검사&#39;)">진단검사<span class="cnt" id="tcnt-진단검사">0</span></span><span class="tag" id="tag-영상의학" onclick="filterTag(&#39;영상의학&#39;)">영상의학<span class="cnt" id="tcnt-영상의학">0</span></span><span class="tag" id="tag-병리" onclick="filterTag(&#39;병리&#39;)">병리<span class="cnt" id="tcnt-병리">0</span></span><span class="tag" id="tag-응급의학" onclick="filterTag(&#39;응급의학&#39;)">응급의학<span class="cnt" id="tcnt-응급의학">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">미용의학 <span class="sub-badge" id="substat-AESTHETICS">0건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-미용시술" onclick="filterTag(&#39;미용시술&#39;)">미용시술<span class="cnt" id="tcnt-미용시술">0</span></span><span class="tag" id="tag-피부미용" onclick="filterTag(&#39;피부미용&#39;)">피부미용<span class="cnt" id="tcnt-피부미용">0</span></span><span class="tag" id="tag-안티에이징" onclick="filterTag(&#39;안티에이징&#39;)">안티에이징<span class="cnt" id="tcnt-안티에이징">0</span></span><span class="tag" id="tag-체형관리" onclick="filterTag(&#39;체형관리&#39;)">체형관리<span class="cnt" id="tcnt-체형관리">0</span></span><span class="tag" id="tag-성형" onclick="filterTag(&#39;성형&#39;)">성형<span class="cnt" id="tcnt-성형">0</span></span><span class="tag" id="tag-비수술적시술" onclick="filterTag(&#39;비수술적시술&#39;)">비수술적시술<span class="cnt" id="tcnt-비수술적시술">0</span></span><span class="tag" id="tag-자연스러운결과" onclick="filterTag(&#39;자연스러운결과&#39;)">자연스러운결과<span class="cnt" id="tcnt-자연스러운결과">0</span></span><span class="tag" id="tag-시술후관리" onclick="filterTag(&#39;시술후관리&#39;)">시술후관리<span class="cnt" id="tcnt-시술후관리">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">보톡스/필러 <span class="sub-badge" id="substat-BOTOX_FILLER">2건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-보톡스" onclick="filterTag(&#39;보톡스&#39;)">보톡스<span class="cnt" id="tcnt-보톡스">2</span></span><span class="tag" id="tag-보툴리눔독소" onclick="filterTag(&#39;보툴리눔독소&#39;)">보툴리눔독소<span class="cnt" id="tcnt-보툴리눔독소">0</span></span><span class="tag" id="tag-앨러간" onclick="filterTag(&#39;앨러간&#39;)">앨러간<span class="cnt" id="tcnt-앨러간">1</span></span><span class="tag" id="tag-메디톡스" onclick="filterTag(&#39;메디톡스&#39;)">메디톡스<span class="cnt" id="tcnt-메디톡스">1</span></span><span class="tag" id="tag-휴젤" onclick="filterTag(&#39;휴젤&#39;)">휴젤<span class="cnt" id="tcnt-휴젤">0</span></span><span class="tag" id="tag-대웅" onclick="filterTag(&#39;대웅&#39;)">대웅<span class="cnt" id="tcnt-대웅">0</span></span><span class="tag" id="tag-이노톡스" onclick="filterTag(&#39;이노톡스&#39;)">이노톡스<span class="cnt" id="tcnt-이노톡스">0</span></span><span class="tag" id="tag-코어톡스" onclick="filterTag(&#39;코어톡스&#39;)">코어톡스<span class="cnt" id="tcnt-코어톡스">0</span></span><span class="tag" id="tag-나보타" onclick="filterTag(&#39;나보타&#39;)">나보타<span class="cnt" id="tcnt-나보타">1</span></span><span class="tag" id="tag-주름개선" onclick="filterTag(&#39;주름개선&#39;)">주름개선<span class="cnt" id="tcnt-주름개선">0</span></span><span class="tag" id="tag-사각턱" onclick="filterTag(&#39;사각턱&#39;)">사각턱<span class="cnt" id="tcnt-사각턱">0</span></span><span class="tag" id="tag-종아리" onclick="filterTag(&#39;종아리&#39;)">종아리<span class="cnt" id="tcnt-종아리">0</span></span><span class="tag" id="tag-팔자주름" onclick="filterTag(&#39;팔자주름&#39;)">팔자주름<span class="cnt" id="tcnt-팔자주름">0</span></span><span class="tag" id="tag-히알루론산필러" onclick="filterTag(&#39;히알루론산필러&#39;)">히알루론산필러<span class="cnt" id="tcnt-히알루론산필러">0</span></span><span class="tag" id="tag-레스틸렌" onclick="filterTag(&#39;레스틸렌&#39;)">레스틸렌<span class="cnt" id="tcnt-레스틸렌">1</span></span><span class="tag" id="tag-쥬비덤" onclick="filterTag(&#39;쥬비덤&#39;)">쥬비덤<span class="cnt" id="tcnt-쥬비덤">0</span></span><span class="tag" id="tag-테아솔" onclick="filterTag(&#39;테아솔&#39;)">테아솔<span class="cnt" id="tcnt-테아솔">0</span></span><span class="tag" id="tag-벨라스트" onclick="filterTag(&#39;벨라스트&#39;)">벨라스트<span class="cnt" id="tcnt-벨라스트">0</span></span><span class="tag" id="tag-이브아르" onclick="filterTag(&#39;이브아르&#39;)">이브아르<span class="cnt" id="tcnt-이브아르">0</span></span><span class="tag" id="tag-볼루마" onclick="filterTag(&#39;볼루마&#39;)">볼루마<span class="cnt" id="tcnt-볼루마">0</span></span><span class="tag" id="tag-코필러" onclick="filterTag(&#39;코필러&#39;)">코필러<span class="cnt" id="tcnt-코필러">0</span></span><span class="tag" id="tag-입술필러" onclick="filterTag(&#39;입술필러&#39;)">입술필러<span class="cnt" id="tcnt-입술필러">0</span></span><span class="tag" id="tag-턱필러" onclick="filterTag(&#39;턱필러&#39;)">턱필러<span class="cnt" id="tcnt-턱필러">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">레이저/에너지장비 <span class="sub-badge" id="substat-LASER">3건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-레이저" onclick="filterTag(&#39;레이저&#39;)">레이저<span class="cnt" id="tcnt-레이저">1</span></span><span class="tag" id="tag-피코레이저" onclick="filterTag(&#39;피코레이저&#39;)">피코레이저<span class="cnt" id="tcnt-피코레이저">1</span></span><span class="tag" id="tag-롱펄스" onclick="filterTag(&#39;롱펄스&#39;)">롱펄스<span class="cnt" id="tcnt-롱펄스">0</span></span><span class="tag" id="tag-엔디야그" onclick="filterTag(&#39;엔디야그&#39;)">엔디야그<span class="cnt" id="tcnt-엔디야그">0</span></span><span class="tag" id="tag-CO2레이저" onclick="filterTag(&#39;CO2레이저&#39;)">CO2레이저<span class="cnt" id="tcnt-CO2레이저">0</span></span><span class="tag" id="tag-어븀야그" onclick="filterTag(&#39;어븀야그&#39;)">어븀야그<span class="cnt" id="tcnt-어븀야그">0</span></span><span class="tag" id="tag-IPL" onclick="filterTag(&#39;IPL&#39;)">IPL<span class="cnt" id="tcnt-IPL">0</span></span><span class="tag" id="tag-RF" onclick="filterTag(&#39;RF&#39;)">RF<span class="cnt" id="tcnt-RF">1</span></span><span class="tag" id="tag-HIFU" onclick="filterTag(&#39;HIFU&#39;)">HIFU<span class="cnt" id="tcnt-HIFU">0</span></span><span class="tag" id="tag-울쎄라" onclick="filterTag(&#39;울쎄라&#39;)">울쎄라<span class="cnt" id="tcnt-울쎄라">1</span></span><span class="tag" id="tag-슈링크" onclick="filterTag(&#39;슈링크&#39;)">슈링크<span class="cnt" id="tcnt-슈링크">1</span></span><span class="tag" id="tag-써마지" onclick="filterTag(&#39;써마지&#39;)">써마지<span class="cnt" id="tcnt-써마지">0</span></span><span class="tag" id="tag-인모드" onclick="filterTag(&#39;인모드&#39;)">인모드<span class="cnt" id="tcnt-인모드">1</span></span><span class="tag" id="tag-포텐자" onclick="filterTag(&#39;포텐자&#39;)">포텐자<span class="cnt" id="tcnt-포텐자">1</span></span><span class="tag" id="tag-피코웨이" onclick="filterTag(&#39;피코웨이&#39;)">피코웨이<span class="cnt" id="tcnt-피코웨이">0</span></span><span class="tag" id="tag-피코슈어" onclick="filterTag(&#39;피코슈어&#39;)">피코슈어<span class="cnt" id="tcnt-피코슈어">0</span></span><span class="tag" id="tag-스타워커" onclick="filterTag(&#39;스타워커&#39;)">스타워커<span class="cnt" id="tcnt-스타워커">0</span></span><span class="tag" id="tag-시네론" onclick="filterTag(&#39;시네론&#39;)">시네론<span class="cnt" id="tcnt-시네론">0</span></span><span class="tag" id="tag-클라리티" onclick="filterTag(&#39;클라리티&#39;)">클라리티<span class="cnt" id="tcnt-클라리티">0</span></span><span class="tag" id="tag-아포지" onclick="filterTag(&#39;아포지&#39;)">아포지<span class="cnt" id="tcnt-아포지">0</span></span><span class="tag" id="tag-레이저토닝" onclick="filterTag(&#39;레이저토닝&#39;)">레이저토닝<span class="cnt" id="tcnt-레이저토닝">0</span></span><span class="tag" id="tag-색소치료" onclick="filterTag(&#39;색소치료&#39;)">색소치료<span class="cnt" id="tcnt-색소치료">1</span></span><span class="tag" id="tag-혈관치료" onclick="filterTag(&#39;혈관치료&#39;)">혈관치료<span class="cnt" id="tcnt-혈관치료">0</span></span><span class="tag" id="tag-제모" onclick="filterTag(&#39;제모&#39;)">제모<span class="cnt" id="tcnt-제모">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">리프팅 <span class="sub-badge" id="substat-LIFTING">2건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-실리프팅" onclick="filterTag(&#39;실리프팅&#39;)">실리프팅<span class="cnt" id="tcnt-실리프팅">0</span></span><span class="tag" id="tag-실" onclick="filterTag(&#39;실&#39;)">실<span class="cnt" id="tcnt-실">4</span></span><span class="tag" id="tag-PDO실" onclick="filterTag(&#39;PDO실&#39;)">PDO실<span class="cnt" id="tcnt-PDO실">0</span></span><span class="tag" id="tag-PCL실" onclick="filterTag(&#39;PCL실&#39;)">PCL실<span class="cnt" id="tcnt-PCL실">0</span></span><span class="tag" id="tag-PLLA실" onclick="filterTag(&#39;PLLA실&#39;)">PLLA실<span class="cnt" id="tcnt-PLLA실">0</span></span><span class="tag" id="tag-콘실" onclick="filterTag(&#39;콘실&#39;)">콘실<span class="cnt" id="tcnt-콘실">0</span></span><span class="tag" id="tag-스피큘" onclick="filterTag(&#39;스피큘&#39;)">스피큘<span class="cnt" id="tcnt-스피큘">0</span></span><span class="tag" id="tag-노블실" onclick="filterTag(&#39;노블실&#39;)">노블실<span class="cnt" id="tcnt-노블실">0</span></span><span class="tag" id="tag-민트리프트" onclick="filterTag(&#39;민트리프트&#39;)">민트리프트<span class="cnt" id="tcnt-민트리프트">0</span></span><span class="tag" id="tag-해피리프트" onclick="filterTag(&#39;해피리프트&#39;)">해피리프트<span class="cnt" id="tcnt-해피리프트">0</span></span><span class="tag" id="tag-울트라리프팅" onclick="filterTag(&#39;울트라리프팅&#39;)">울트라리프팅<span class="cnt" id="tcnt-울트라리프팅">0</span></span><span class="tag" id="tag-V리프팅" onclick="filterTag(&#39;V리프팅&#39;)">V리프팅<span class="cnt" id="tcnt-V리프팅">0</span></span><span class="tag" id="tag-페이스리프팅" onclick="filterTag(&#39;페이스리프팅&#39;)">페이스리프팅<span class="cnt" id="tcnt-페이스리프팅">0</span></span><span class="tag" id="tag-넥리프팅" onclick="filterTag(&#39;넥리프팅&#39;)">넥리프팅<span class="cnt" id="tcnt-넥리프팅">0</span></span><span class="tag" id="tag-안검하수" onclick="filterTag(&#39;안검하수&#39;)">안검하수<span class="cnt" id="tcnt-안검하수">0</span></span><span class="tag" id="tag-눈꺼풀리프팅" onclick="filterTag(&#39;눈꺼풀리프팅&#39;)">눈꺼풀리프팅<span class="cnt" id="tcnt-눈꺼풀리프팅">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">쁘띠성형 <span class="sub-badge" id="substat-PETIT_SURGERY">1건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-쌍꺼풀" onclick="filterTag(&#39;쌍꺼풀&#39;)">쌍꺼풀<span class="cnt" id="tcnt-쌍꺼풀">0</span></span><span class="tag" id="tag-눈매교정" onclick="filterTag(&#39;눈매교정&#39;)">눈매교정<span class="cnt" id="tcnt-눈매교정">0</span></span><span class="tag" id="tag-코필러" onclick="filterTag(&#39;코필러&#39;)">코필러<span class="cnt" id="tcnt-코필러">0</span></span><span class="tag" id="tag-지방분해주사" onclick="filterTag(&#39;지방분해주사&#39;)">지방분해주사<span class="cnt" id="tcnt-지방분해주사">0</span></span><span class="tag" id="tag-윤곽주사" onclick="filterTag(&#39;윤곽주사&#39;)">윤곽주사<span class="cnt" id="tcnt-윤곽주사">0</span></span><span class="tag" id="tag-물광주사" onclick="filterTag(&#39;물광주사&#39;)">물광주사<span class="cnt" id="tcnt-물광주사">0</span></span><span class="tag" id="tag-엑소좀" onclick="filterTag(&#39;엑소좀&#39;)">엑소좀<span class="cnt" id="tcnt-엑소좀">1</span></span><span class="tag" id="tag-줄기세포" onclick="filterTag(&#39;줄기세포&#39;)">줄기세포<span class="cnt" id="tcnt-줄기세포">1</span></span><span class="tag" id="tag-태반주사" onclick="filterTag(&#39;태반주사&#39;)">태반주사<span class="cnt" id="tcnt-태반주사">0</span></span><span class="tag" id="tag-PRP" onclick="filterTag(&#39;PRP&#39;)">PRP<span class="cnt" id="tcnt-PRP">0</span></span><span class="tag" id="tag-콜라겐주사" onclick="filterTag(&#39;콜라겐주사&#39;)">콜라겐주사<span class="cnt" id="tcnt-콜라겐주사">0</span></span><span class="tag" id="tag-연어주사" onclick="filterTag(&#39;연어주사&#39;)">연어주사<span class="cnt" id="tcnt-연어주사">0</span></span><span class="tag" id="tag-MTS" onclick="filterTag(&#39;MTS&#39;)">MTS<span class="cnt" id="tcnt-MTS">0</span></span><span class="tag" id="tag-더마롤러" onclick="filterTag(&#39;더마롤러&#39;)">더마롤러<span class="cnt" id="tcnt-더마롤러">0</span></span><span class="tag" id="tag-마이크로니들링" onclick="filterTag(&#39;마이크로니들링&#39;)">마이크로니들링<span class="cnt" id="tcnt-마이크로니들링">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">체형/비만 <span class="sub-badge" id="substat-BODY_SLIMMING">3건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-지방흡입" onclick="filterTag(&#39;지방흡입&#39;)">지방흡입<span class="cnt" id="tcnt-지방흡입">0</span></span><span class="tag" id="tag-지방분해" onclick="filterTag(&#39;지방분해&#39;)">지방분해<span class="cnt" id="tcnt-지방분해">0</span></span><span class="tag" id="tag-울트라셀" onclick="filterTag(&#39;울트라셀&#39;)">울트라셀<span class="cnt" id="tcnt-울트라셀">0</span></span><span class="tag" id="tag-쿨스컬프팅" onclick="filterTag(&#39;쿨스컬프팅&#39;)">쿨스컬프팅<span class="cnt" id="tcnt-쿨스컬프팅">0</span></span><span class="tag" id="tag-벨라쉐이프" onclick="filterTag(&#39;벨라쉐이프&#39;)">벨라쉐이프<span class="cnt" id="tcnt-벨라쉐이프">0</span></span><span class="tag" id="tag-바디FX" onclick="filterTag(&#39;바디FX&#39;)">바디FX<span class="cnt" id="tcnt-바디FX">0</span></span><span class="tag" id="tag-비만치료" onclick="filterTag(&#39;비만치료&#39;)">비만치료<span class="cnt" id="tcnt-비만치료">2</span></span><span class="tag" id="tag-비만약" onclick="filterTag(&#39;비만약&#39;)">비만약<span class="cnt" id="tcnt-비만약">0</span></span><span class="tag" id="tag-삭센다" onclick="filterTag(&#39;삭센다&#39;)">삭센다<span class="cnt" id="tcnt-삭센다">2</span></span><span class="tag" id="tag-위고비" onclick="filterTag(&#39;위고비&#39;)">위고비<span class="cnt" id="tcnt-위고비">2</span></span><span class="tag" id="tag-마운자로" onclick="filterTag(&#39;마운자로&#39;)">마운자로<span class="cnt" id="tcnt-마운자로">1</span></span><span class="tag" id="tag-체중감량" onclick="filterTag(&#39;체중감량&#39;)">체중감량<span class="cnt" id="tcnt-체중감량">1</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">피부관리 <span class="sub-badge" id="substat-SKINCARE">0건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-보습" onclick="filterTag(&#39;보습&#39;)">보습<span class="cnt" id="tcnt-보습">0</span></span><span class="tag" id="tag-미백" onclick="filterTag(&#39;미백&#39;)">미백<span class="cnt" id="tcnt-미백">0</span></span><span class="tag" id="tag-여드름" onclick="filterTag(&#39;여드름&#39;)">여드름<span class="cnt" id="tcnt-여드름">0</span></span><span class="tag" id="tag-흉터" onclick="filterTag(&#39;흉터&#39;)">흉터<span class="cnt" id="tcnt-흉터">0</span></span><span class="tag" id="tag-모공" onclick="filterTag(&#39;모공&#39;)">모공<span class="cnt" id="tcnt-모공">0</span></span><span class="tag" id="tag-민감성" onclick="filterTag(&#39;민감성&#39;)">민감성<span class="cnt" id="tcnt-민감성">0</span></span><span class="tag" id="tag-아토피" onclick="filterTag(&#39;아토피&#39;)">아토피<span class="cnt" id="tcnt-아토피">0</span></span><span class="tag" id="tag-건선" onclick="filterTag(&#39;건선&#39;)">건선<span class="cnt" id="tcnt-건선">0</span></span><span class="tag" id="tag-색소침착" onclick="filterTag(&#39;색소침착&#39;)">색소침착<span class="cnt" id="tcnt-색소침착">0</span></span><span class="tag" id="tag-기미" onclick="filterTag(&#39;기미&#39;)">기미<span class="cnt" id="tcnt-기미">0</span></span><span class="tag" id="tag-잡티" onclick="filterTag(&#39;잡티&#39;)">잡티<span class="cnt" id="tcnt-잡티">0</span></span><span class="tag" id="tag-홍조" onclick="filterTag(&#39;홍조&#39;)">홍조<span class="cnt" id="tcnt-홍조">0</span></span><span class="tag" id="tag-주사" onclick="filterTag(&#39;주사&#39;)">주사<span class="cnt" id="tcnt-주사">0</span></span><span class="tag" id="tag-피부과학" onclick="filterTag(&#39;피부과학&#39;)">피부과학<span class="cnt" id="tcnt-피부과학">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">약품/처방 <span class="sub-badge" id="substat-DRUGS">0건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-전문의약품" onclick="filterTag(&#39;전문의약품&#39;)">전문의약품<span class="cnt" id="tcnt-전문의약품">0</span></span><span class="tag" id="tag-일반의약품" onclick="filterTag(&#39;일반의약품&#39;)">일반의약품<span class="cnt" id="tcnt-일반의약품">0</span></span><span class="tag" id="tag-항생제" onclick="filterTag(&#39;항생제&#39;)">항생제<span class="cnt" id="tcnt-항생제">0</span></span><span class="tag" id="tag-항염증제" onclick="filterTag(&#39;항염증제&#39;)">항염증제<span class="cnt" id="tcnt-항염증제">0</span></span><span class="tag" id="tag-스테로이드" onclick="filterTag(&#39;스테로이드&#39;)">스테로이드<span class="cnt" id="tcnt-스테로이드">0</span></span><span class="tag" id="tag-진통제" onclick="filterTag(&#39;진통제&#39;)">진통제<span class="cnt" id="tcnt-진통제">0</span></span><span class="tag" id="tag-수면제" onclick="filterTag(&#39;수면제&#39;)">수면제<span class="cnt" id="tcnt-수면제">0</span></span><span class="tag" id="tag-항우울제" onclick="filterTag(&#39;항우울제&#39;)">항우울제<span class="cnt" id="tcnt-항우울제">0</span></span><span class="tag" id="tag-마약류관리" onclick="filterTag(&#39;마약류관리&#39;)">마약류관리<span class="cnt" id="tcnt-마약류관리">0</span></span><span class="tag" id="tag-처방전" onclick="filterTag(&#39;처방전&#39;)">처방전<span class="cnt" id="tcnt-처방전">0</span></span><span class="tag" id="tag-DUR" onclick="filterTag(&#39;DUR&#39;)">DUR<span class="cnt" id="tcnt-DUR">0</span></span><span class="tag" id="tag-약물상호작용" onclick="filterTag(&#39;약물상호작용&#39;)">약물상호작용<span class="cnt" id="tcnt-약물상호작용">0</span></span><span class="tag" id="tag-신약" onclick="filterTag(&#39;신약&#39;)">신약<span class="cnt" id="tcnt-신약">1</span></span><span class="tag" id="tag-제네릭" onclick="filterTag(&#39;제네릭&#39;)">제네릭<span class="cnt" id="tcnt-제네릭">0</span></span><span class="tag" id="tag-바이오시밀러" onclick="filterTag(&#39;바이오시밀러&#39;)">바이오시밀러<span class="cnt" id="tcnt-바이오시밀러">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">암검진 <span class="sub-badge" id="substat-CANCER">1건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-5대암검진" onclick="filterTag(&#39;5대암검진&#39;)">5대암검진<span class="cnt" id="tcnt-5대암검진">1</span></span><span class="tag" id="tag-위암" onclick="filterTag(&#39;위암&#39;)">위암<span class="cnt" id="tcnt-위암">1</span></span><span class="tag" id="tag-대장암" onclick="filterTag(&#39;대장암&#39;)">대장암<span class="cnt" id="tcnt-대장암">1</span></span><span class="tag" id="tag-간암" onclick="filterTag(&#39;간암&#39;)">간암<span class="cnt" id="tcnt-간암">0</span></span><span class="tag" id="tag-유방암" onclick="filterTag(&#39;유방암&#39;)">유방암<span class="cnt" id="tcnt-유방암">0</span></span><span class="tag" id="tag-자궁경부암" onclick="filterTag(&#39;자궁경부암&#39;)">자궁경부암<span class="cnt" id="tcnt-자궁경부암">0</span></span><span class="tag" id="tag-국가암검진" onclick="filterTag(&#39;국가암검진&#39;)">국가암검진<span class="cnt" id="tcnt-국가암검진">0</span></span><span class="tag" id="tag-내시경" onclick="filterTag(&#39;내시경&#39;)">내시경<span class="cnt" id="tcnt-내시경">1</span></span><span class="tag" id="tag-조직검사" onclick="filterTag(&#39;조직검사&#39;)">조직검사<span class="cnt" id="tcnt-조직검사">0</span></span><span class="tag" id="tag-종양표지자" onclick="filterTag(&#39;종양표지자&#39;)">종양표지자<span class="cnt" id="tcnt-종양표지자">0</span></span><span class="tag" id="tag-영상검사" onclick="filterTag(&#39;영상검사&#39;)">영상검사<span class="cnt" id="tcnt-영상검사">0</span></span></div>
+          </li>
+        
+      </ul>
+    </div>
+  
+    <div class="cat-detail" style="border-left: 3px solid #d2a8ff">
+      <h2 style="color:#d2a8ff">의원경영</h2>
+      <div style="color:var(--text3);font-size:12px;margin-bottom:4px">CLINIC_MGMT</div>
+      <div id="catstat-CLINIC_MGMT" style="font-size:13px;color:var(--text2);margin-bottom:14px">메시지 수: 5건 (13%)</div>
+      <ul class="sub-list">
+        
+          <li class="sub-item">
+            <div class="sub-name">세미나/학술대회 <span class="sub-badge" id="substat-SEMINAR">1건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-세미나" onclick="filterTag(&#39;세미나&#39;)">세미나<span class="cnt" id="tcnt-세미나">2</span></span><span class="tag" id="tag-워크숍" onclick="filterTag(&#39;워크숍&#39;)">워크숍<span class="cnt" id="tcnt-워크숍">0</span></span><span class="tag" id="tag-학술대회" onclick="filterTag(&#39;학술대회&#39;)">학술대회<span class="cnt" id="tcnt-학술대회">0</span></span><span class="tag" id="tag-연수교육" onclick="filterTag(&#39;연수교육&#39;)">연수교육<span class="cnt" id="tcnt-연수교육">0</span></span><span class="tag" id="tag-CME" onclick="filterTag(&#39;CME&#39;)">CME<span class="cnt" id="tcnt-CME">0</span></span><span class="tag" id="tag-라이브서저리" onclick="filterTag(&#39;라이브서저리&#39;)">라이브서저리<span class="cnt" id="tcnt-라이브서저리">1</span></span><span class="tag" id="tag-케이스발표" onclick="filterTag(&#39;케이스발표&#39;)">케이스발표<span class="cnt" id="tcnt-케이스발표">0</span></span><span class="tag" id="tag-포스터발표" onclick="filterTag(&#39;포스터발표&#39;)">포스터발표<span class="cnt" id="tcnt-포스터발표">0</span></span><span class="tag" id="tag-초청강연" onclick="filterTag(&#39;초청강연&#39;)">초청강연<span class="cnt" id="tcnt-초청강연">0</span></span><span class="tag" id="tag-해외학회" onclick="filterTag(&#39;해외학회&#39;)">해외학회<span class="cnt" id="tcnt-해외학회">0</span></span><span class="tag" id="tag-국내학회" onclick="filterTag(&#39;국내학회&#39;)">국내학회<span class="cnt" id="tcnt-국내학회">0</span></span><span class="tag" id="tag-IMCAS" onclick="filterTag(&#39;IMCAS&#39;)">IMCAS<span class="cnt" id="tcnt-IMCAS">1</span></span><span class="tag" id="tag-AMWC" onclick="filterTag(&#39;AMWC&#39;)">AMWC<span class="cnt" id="tcnt-AMWC">0</span></span><span class="tag" id="tag-AACS" onclick="filterTag(&#39;AACS&#39;)">AACS<span class="cnt" id="tcnt-AACS">0</span></span><span class="tag" id="tag-KSAS" onclick="filterTag(&#39;KSAS&#39;)">KSAS<span class="cnt" id="tcnt-KSAS">0</span></span><span class="tag" id="tag-대한피부과학회" onclick="filterTag(&#39;대한피부과학회&#39;)">대한피부과학회<span class="cnt" id="tcnt-대한피부과학회">0</span></span><span class="tag" id="tag-대한의사협회" onclick="filterTag(&#39;대한의사협회&#39;)">대한의사협회<span class="cnt" id="tcnt-대한의사협회">0</span></span><span class="tag" id="tag-온라인세미나" onclick="filterTag(&#39;온라인세미나&#39;)">온라인세미나<span class="cnt" id="tcnt-온라인세미나">0</span></span><span class="tag" id="tag-웨비나" onclick="filterTag(&#39;웨비나&#39;)">웨비나<span class="cnt" id="tcnt-웨비나">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">장비/재료수급 <span class="sub-badge" id="substat-EQUIPMENT">0건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-의료기기" onclick="filterTag(&#39;의료기기&#39;)">의료기기<span class="cnt" id="tcnt-의료기기">0</span></span><span class="tag" id="tag-신규장비" onclick="filterTag(&#39;신규장비&#39;)">신규장비<span class="cnt" id="tcnt-신규장비">0</span></span><span class="tag" id="tag-장비구매" onclick="filterTag(&#39;장비구매&#39;)">장비구매<span class="cnt" id="tcnt-장비구매">0</span></span><span class="tag" id="tag-장비리스" onclick="filterTag(&#39;장비리스&#39;)">장비리스<span class="cnt" id="tcnt-장비리스">0</span></span><span class="tag" id="tag-장비임대" onclick="filterTag(&#39;장비임대&#39;)">장비임대<span class="cnt" id="tcnt-장비임대">0</span></span><span class="tag" id="tag-소모품" onclick="filterTag(&#39;소모품&#39;)">소모품<span class="cnt" id="tcnt-소모품">0</span></span><span class="tag" id="tag-재료비" onclick="filterTag(&#39;재료비&#39;)">재료비<span class="cnt" id="tcnt-재료비">0</span></span><span class="tag" id="tag-도매상" onclick="filterTag(&#39;도매상&#39;)">도매상<span class="cnt" id="tcnt-도매상">2</span></span><span class="tag" id="tag-공급업체" onclick="filterTag(&#39;공급업체&#39;)">공급업체<span class="cnt" id="tcnt-공급업체">0</span></span><span class="tag" id="tag-AS" onclick="filterTag(&#39;AS&#39;)">AS<span class="cnt" id="tcnt-AS">1</span></span><span class="tag" id="tag-유지보수" onclick="filterTag(&#39;유지보수&#39;)">유지보수<span class="cnt" id="tcnt-유지보수">0</span></span><span class="tag" id="tag-국산장비" onclick="filterTag(&#39;국산장비&#39;)">국산장비<span class="cnt" id="tcnt-국산장비">0</span></span><span class="tag" id="tag-수입장비" onclick="filterTag(&#39;수입장비&#39;)">수입장비<span class="cnt" id="tcnt-수입장비">0</span></span><span class="tag" id="tag-인허가" onclick="filterTag(&#39;인허가&#39;)">인허가<span class="cnt" id="tcnt-인허가">0</span></span><span class="tag" id="tag-FDA승인" onclick="filterTag(&#39;FDA승인&#39;)">FDA승인<span class="cnt" id="tcnt-FDA승인">0</span></span><span class="tag" id="tag-CE인증" onclick="filterTag(&#39;CE인증&#39;)">CE인증<span class="cnt" id="tcnt-CE인증">0</span></span><span class="tag" id="tag-KFDA" onclick="filterTag(&#39;KFDA&#39;)">KFDA<span class="cnt" id="tcnt-KFDA">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">약품/도매 <span class="sub-badge" id="substat-PHARMA">1건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-도매상" onclick="filterTag(&#39;도매상&#39;)">도매상<span class="cnt" id="tcnt-도매상">0</span></span><span class="tag" id="tag-약품공급" onclick="filterTag(&#39;약품공급&#39;)">약품공급<span class="cnt" id="tcnt-약품공급">0</span></span><span class="tag" id="tag-마진" onclick="filterTag(&#39;마진&#39;)">마진<span class="cnt" id="tcnt-마진">0</span></span><span class="tag" id="tag-거래처" onclick="filterTag(&#39;거래처&#39;)">거래처<span class="cnt" id="tcnt-거래처">0</span></span><span class="tag" id="tag-약품가격" onclick="filterTag(&#39;약품가격&#39;)">약품가격<span class="cnt" id="tcnt-약품가격">0</span></span><span class="tag" id="tag-공동구매" onclick="filterTag(&#39;공동구매&#39;)">공동구매<span class="cnt" id="tcnt-공동구매">2</span></span><span class="tag" id="tag-리베이트" onclick="filterTag(&#39;리베이트&#39;)">리베이트<span class="cnt" id="tcnt-리베이트">0</span></span><span class="tag" id="tag-할인" onclick="filterTag(&#39;할인&#39;)">할인<span class="cnt" id="tcnt-할인">0</span></span><span class="tag" id="tag-미용재료" onclick="filterTag(&#39;미용재료&#39;)">미용재료<span class="cnt" id="tcnt-미용재료">0</span></span><span class="tag" id="tag-보톡스단가" onclick="filterTag(&#39;보톡스단가&#39;)">보톡스단가<span class="cnt" id="tcnt-보톡스단가">0</span></span><span class="tag" id="tag-필러단가" onclick="filterTag(&#39;필러단가&#39;)">필러단가<span class="cnt" id="tcnt-필러단가">0</span></span><span class="tag" id="tag-실단가" onclick="filterTag(&#39;실단가&#39;)">실단가<span class="cnt" id="tcnt-실단가">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">제품정보/신제품 <span class="sub-badge" id="substat-PRODUCT_INFO">0건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-신제품출시" onclick="filterTag(&#39;신제품출시&#39;)">신제품출시<span class="cnt" id="tcnt-신제품출시">0</span></span><span class="tag" id="tag-제품리뷰" onclick="filterTag(&#39;제품리뷰&#39;)">제품리뷰<span class="cnt" id="tcnt-제품리뷰">0</span></span><span class="tag" id="tag-비교분석" onclick="filterTag(&#39;비교분석&#39;)">비교분석<span class="cnt" id="tcnt-비교분석">0</span></span><span class="tag" id="tag-제품문의" onclick="filterTag(&#39;제품문의&#39;)">제품문의<span class="cnt" id="tcnt-제품문의">0</span></span><span class="tag" id="tag-사용후기" onclick="filterTag(&#39;사용후기&#39;)">사용후기<span class="cnt" id="tcnt-사용후기">0</span></span><span class="tag" id="tag-부작용보고" onclick="filterTag(&#39;부작용보고&#39;)">부작용보고<span class="cnt" id="tcnt-부작용보고">0</span></span><span class="tag" id="tag-임상데이터" onclick="filterTag(&#39;임상데이터&#39;)">임상데이터<span class="cnt" id="tcnt-임상데이터">0</span></span><span class="tag" id="tag-논문근거" onclick="filterTag(&#39;논문근거&#39;)">논문근거<span class="cnt" id="tcnt-논문근거">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">의원운영 <span class="sub-badge" id="substat-CLINIC_OPS">0건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-직원채용" onclick="filterTag(&#39;직원채용&#39;)">직원채용<span class="cnt" id="tcnt-직원채용">0</span></span><span class="tag" id="tag-간호사" onclick="filterTag(&#39;간호사&#39;)">간호사<span class="cnt" id="tcnt-간호사">0</span></span><span class="tag" id="tag-코디네이터" onclick="filterTag(&#39;코디네이터&#39;)">코디네이터<span class="cnt" id="tcnt-코디네이터">0</span></span><span class="tag" id="tag-원무" onclick="filterTag(&#39;원무&#39;)">원무<span class="cnt" id="tcnt-원무">0</span></span><span class="tag" id="tag-급여" onclick="filterTag(&#39;급여&#39;)">급여<span class="cnt" id="tcnt-급여">0</span></span><span class="tag" id="tag-노무" onclick="filterTag(&#39;노무&#39;)">노무<span class="cnt" id="tcnt-노무">0</span></span><span class="tag" id="tag-근로계약" onclick="filterTag(&#39;근로계약&#39;)">근로계약<span class="cnt" id="tcnt-근로계약">0</span></span><span class="tag" id="tag-직원교육" onclick="filterTag(&#39;직원교육&#39;)">직원교육<span class="cnt" id="tcnt-직원교육">0</span></span><span class="tag" id="tag-고객응대" onclick="filterTag(&#39;고객응대&#39;)">고객응대<span class="cnt" id="tcnt-고객응대">0</span></span><span class="tag" id="tag-컴플레인" onclick="filterTag(&#39;컴플레인&#39;)">컴플레인<span class="cnt" id="tcnt-컴플레인">0</span></span><span class="tag" id="tag-환자관리" onclick="filterTag(&#39;환자관리&#39;)">환자관리<span class="cnt" id="tcnt-환자관리">0</span></span><span class="tag" id="tag-예약시스템" onclick="filterTag(&#39;예약시스템&#39;)">예약시스템<span class="cnt" id="tcnt-예약시스템">0</span></span><span class="tag" id="tag-EMR" onclick="filterTag(&#39;EMR&#39;)">EMR<span class="cnt" id="tcnt-EMR">1</span></span><span class="tag" id="tag-의무기록" onclick="filterTag(&#39;의무기록&#39;)">의무기록<span class="cnt" id="tcnt-의무기록">0</span></span><span class="tag" id="tag-청구" onclick="filterTag(&#39;청구&#39;)">청구<span class="cnt" id="tcnt-청구">0</span></span><span class="tag" id="tag-심사" onclick="filterTag(&#39;심사&#39;)">심사<span class="cnt" id="tcnt-심사">0</span></span><span class="tag" id="tag-삭감" onclick="filterTag(&#39;삭감&#39;)">삭감<span class="cnt" id="tcnt-삭감">0</span></span><span class="tag" id="tag-이의신청" onclick="filterTag(&#39;이의신청&#39;)">이의신청<span class="cnt" id="tcnt-이의신청">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">마케팅/홍보 <span class="sub-badge" id="substat-MARKETING">1건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-네이버광고" onclick="filterTag(&#39;네이버광고&#39;)">네이버광고<span class="cnt" id="tcnt-네이버광고">1</span></span><span class="tag" id="tag-카카오광고" onclick="filterTag(&#39;카카오광고&#39;)">카카오광고<span class="cnt" id="tcnt-카카오광고">0</span></span><span class="tag" id="tag-SNS마케팅" onclick="filterTag(&#39;SNS마케팅&#39;)">SNS마케팅<span class="cnt" id="tcnt-SNS마케팅">1</span></span><span class="tag" id="tag-인스타그램" onclick="filterTag(&#39;인스타그램&#39;)">인스타그램<span class="cnt" id="tcnt-인스타그램">0</span></span><span class="tag" id="tag-유튜브채널" onclick="filterTag(&#39;유튜브채널&#39;)">유튜브채널<span class="cnt" id="tcnt-유튜브채널">0</span></span><span class="tag" id="tag-블로그" onclick="filterTag(&#39;블로그&#39;)">블로그<span class="cnt" id="tcnt-블로그">0</span></span><span class="tag" id="tag-리뷰관리" onclick="filterTag(&#39;리뷰관리&#39;)">리뷰관리<span class="cnt" id="tcnt-리뷰관리">0</span></span><span class="tag" id="tag-강남언니" onclick="filterTag(&#39;강남언니&#39;)">강남언니<span class="cnt" id="tcnt-강남언니">1</span></span><span class="tag" id="tag-바비톡" onclick="filterTag(&#39;바비톡&#39;)">바비톡<span class="cnt" id="tcnt-바비톡">0</span></span><span class="tag" id="tag-성형앱" onclick="filterTag(&#39;성형앱&#39;)">성형앱<span class="cnt" id="tcnt-성형앱">0</span></span><span class="tag" id="tag-광고비" onclick="filterTag(&#39;광고비&#39;)">광고비<span class="cnt" id="tcnt-광고비">0</span></span><span class="tag" id="tag-ROI" onclick="filterTag(&#39;ROI&#39;)">ROI<span class="cnt" id="tcnt-ROI">0</span></span><span class="tag" id="tag-이벤트" onclick="filterTag(&#39;이벤트&#39;)">이벤트<span class="cnt" id="tcnt-이벤트">0</span></span><span class="tag" id="tag-패키지상품" onclick="filterTag(&#39;패키지상품&#39;)">패키지상품<span class="cnt" id="tcnt-패키지상품">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">법무/컴플라이언스 <span class="sub-badge" id="substat-LEGAL">0건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-의료법위반" onclick="filterTag(&#39;의료법위반&#39;)">의료법위반<span class="cnt" id="tcnt-의료법위반">0</span></span><span class="tag" id="tag-광고심의" onclick="filterTag(&#39;광고심의&#39;)">광고심의<span class="cnt" id="tcnt-광고심의">0</span></span><span class="tag" id="tag-개인정보보호" onclick="filterTag(&#39;개인정보보호&#39;)">개인정보보호<span class="cnt" id="tcnt-개인정보보호">0</span></span><span class="tag" id="tag-진료거부" onclick="filterTag(&#39;진료거부&#39;)">진료거부<span class="cnt" id="tcnt-진료거부">0</span></span><span class="tag" id="tag-의료사고" onclick="filterTag(&#39;의료사고&#39;)">의료사고<span class="cnt" id="tcnt-의료사고">0</span></span><span class="tag" id="tag-의료분쟁조정" onclick="filterTag(&#39;의료분쟁조정&#39;)">의료분쟁조정<span class="cnt" id="tcnt-의료분쟁조정">0</span></span><span class="tag" id="tag-손해배상" onclick="filterTag(&#39;손해배상&#39;)">손해배상<span class="cnt" id="tcnt-손해배상">0</span></span><span class="tag" id="tag-형사고소" onclick="filterTag(&#39;형사고소&#39;)">형사고소<span class="cnt" id="tcnt-형사고소">0</span></span><span class="tag" id="tag-민사소송" onclick="filterTag(&#39;민사소송&#39;)">민사소송<span class="cnt" id="tcnt-민사소송">0</span></span><span class="tag" id="tag-보험청구사기" onclick="filterTag(&#39;보험청구사기&#39;)">보험청구사기<span class="cnt" id="tcnt-보험청구사기">0</span></span><span class="tag" id="tag-감사원" onclick="filterTag(&#39;감사원&#39;)">감사원<span class="cnt" id="tcnt-감사원">0</span></span><span class="tag" id="tag-세무조사" onclick="filterTag(&#39;세무조사&#39;)">세무조사<span class="cnt" id="tcnt-세무조사">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">평점/리뷰 <span class="sub-badge" id="substat-RATING">2건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-네이버지도평점" onclick="filterTag(&#39;네이버지도평점&#39;)">네이버지도평점<span class="cnt" id="tcnt-네이버지도평점">0</span></span><span class="tag" id="tag-카카오맵평점" onclick="filterTag(&#39;카카오맵평점&#39;)">카카오맵평점<span class="cnt" id="tcnt-카카오맵평점">0</span></span><span class="tag" id="tag-구글리뷰" onclick="filterTag(&#39;구글리뷰&#39;)">구글리뷰<span class="cnt" id="tcnt-구글리뷰">1</span></span><span class="tag" id="tag-앱리뷰" onclick="filterTag(&#39;앱리뷰&#39;)">앱리뷰<span class="cnt" id="tcnt-앱리뷰">1</span></span><span class="tag" id="tag-악성리뷰" onclick="filterTag(&#39;악성리뷰&#39;)">악성리뷰<span class="cnt" id="tcnt-악성리뷰">2</span></span><span class="tag" id="tag-리뷰삭제" onclick="filterTag(&#39;리뷰삭제&#39;)">리뷰삭제<span class="cnt" id="tcnt-리뷰삭제">0</span></span><span class="tag" id="tag-환자만족도" onclick="filterTag(&#39;환자만족도&#39;)">환자만족도<span class="cnt" id="tcnt-환자만족도">0</span></span><span class="tag" id="tag-NPS" onclick="filterTag(&#39;NPS&#39;)">NPS<span class="cnt" id="tcnt-NPS">0</span></span><span class="tag" id="tag-재방문율" onclick="filterTag(&#39;재방문율&#39;)">재방문율<span class="cnt" id="tcnt-재방문율">0</span></span></div>
+          </li>
+        
+      </ul>
+    </div>
+  
+    <div class="cat-detail" style="border-left: 3px solid #ff7b72">
+      <h2 style="color:#ff7b72">엔터테인먼트</h2>
+      <div style="color:var(--text3);font-size:12px;margin-bottom:4px">ENTERTAINMENT</div>
+      <div id="catstat-ENTERTAINMENT" style="font-size:13px;color:var(--text2);margin-bottom:14px">메시지 수: 3건 (8%)</div>
+      <ul class="sub-list">
+        
+          <li class="sub-item">
+            <div class="sub-name">동영상 <span class="sub-badge" id="substat-VIDEO">1건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-유튜브" onclick="filterTag(&#39;유튜브&#39;)">유튜브<span class="cnt" id="tcnt-유튜브">0</span></span><span class="tag" id="tag-릴스" onclick="filterTag(&#39;릴스&#39;)">릴스<span class="cnt" id="tcnt-릴스">0</span></span><span class="tag" id="tag-틱톡" onclick="filterTag(&#39;틱톡&#39;)">틱톡<span class="cnt" id="tcnt-틱톡">0</span></span><span class="tag" id="tag-쇼츠" onclick="filterTag(&#39;쇼츠&#39;)">쇼츠<span class="cnt" id="tcnt-쇼츠">0</span></span><span class="tag" id="tag-넷플릭스" onclick="filterTag(&#39;넷플릭스&#39;)">넷플릭스<span class="cnt" id="tcnt-넷플릭스">1</span></span><span class="tag" id="tag-왓챠" onclick="filterTag(&#39;왓챠&#39;)">왓챠<span class="cnt" id="tcnt-왓챠">0</span></span><span class="tag" id="tag-웨이브" onclick="filterTag(&#39;웨이브&#39;)">웨이브<span class="cnt" id="tcnt-웨이브">0</span></span><span class="tag" id="tag-드라마" onclick="filterTag(&#39;드라마&#39;)">드라마<span class="cnt" id="tcnt-드라마">1</span></span><span class="tag" id="tag-영화" onclick="filterTag(&#39;영화&#39;)">영화<span class="cnt" id="tcnt-영화">0</span></span><span class="tag" id="tag-다큐멘터리" onclick="filterTag(&#39;다큐멘터리&#39;)">다큐멘터리<span class="cnt" id="tcnt-다큐멘터리">0</span></span><span class="tag" id="tag-예능" onclick="filterTag(&#39;예능&#39;)">예능<span class="cnt" id="tcnt-예능">0</span></span><span class="tag" id="tag-스포츠중계" onclick="filterTag(&#39;스포츠중계&#39;)">스포츠중계<span class="cnt" id="tcnt-스포츠중계">0</span></span><span class="tag" id="tag-라이브방송" onclick="filterTag(&#39;라이브방송&#39;)">라이브방송<span class="cnt" id="tcnt-라이브방송">0</span></span><span class="tag" id="tag-하이라이트" onclick="filterTag(&#39;하이라이트&#39;)">하이라이트<span class="cnt" id="tcnt-하이라이트">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">음악 <span class="sub-badge" id="substat-MUSIC">0건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-K팝" onclick="filterTag(&#39;K팝&#39;)">K팝<span class="cnt" id="tcnt-K팝">0</span></span><span class="tag" id="tag-팝" onclick="filterTag(&#39;팝&#39;)">팝<span class="cnt" id="tcnt-팝">0</span></span><span class="tag" id="tag-클래식" onclick="filterTag(&#39;클래식&#39;)">클래식<span class="cnt" id="tcnt-클래식">0</span></span><span class="tag" id="tag-재즈" onclick="filterTag(&#39;재즈&#39;)">재즈<span class="cnt" id="tcnt-재즈">0</span></span><span class="tag" id="tag-힙합" onclick="filterTag(&#39;힙합&#39;)">힙합<span class="cnt" id="tcnt-힙합">0</span></span><span class="tag" id="tag-인디" onclick="filterTag(&#39;인디&#39;)">인디<span class="cnt" id="tcnt-인디">0</span></span><span class="tag" id="tag-OST" onclick="filterTag(&#39;OST&#39;)">OST<span class="cnt" id="tcnt-OST">0</span></span><span class="tag" id="tag-플레이리스트" onclick="filterTag(&#39;플레이리스트&#39;)">플레이리스트<span class="cnt" id="tcnt-플레이리스트">0</span></span><span class="tag" id="tag-콘서트" onclick="filterTag(&#39;콘서트&#39;)">콘서트<span class="cnt" id="tcnt-콘서트">0</span></span><span class="tag" id="tag-페스티벌" onclick="filterTag(&#39;페스티벌&#39;)">페스티벌<span class="cnt" id="tcnt-페스티벌">0</span></span><span class="tag" id="tag-유튜브뮤직" onclick="filterTag(&#39;유튜브뮤직&#39;)">유튜브뮤직<span class="cnt" id="tcnt-유튜브뮤직">0</span></span><span class="tag" id="tag-스포티파이" onclick="filterTag(&#39;스포티파이&#39;)">스포티파이<span class="cnt" id="tcnt-스포티파이">0</span></span><span class="tag" id="tag-멜론" onclick="filterTag(&#39;멜론&#39;)">멜론<span class="cnt" id="tcnt-멜론">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">스포츠 <span class="sub-badge" id="substat-SPORTS">1건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-야구" onclick="filterTag(&#39;야구&#39;)">야구<span class="cnt" id="tcnt-야구">1</span></span><span class="tag" id="tag-축구" onclick="filterTag(&#39;축구&#39;)">축구<span class="cnt" id="tcnt-축구">0</span></span><span class="tag" id="tag-농구" onclick="filterTag(&#39;농구&#39;)">농구<span class="cnt" id="tcnt-농구">0</span></span><span class="tag" id="tag-골프" onclick="filterTag(&#39;골프&#39;)">골프<span class="cnt" id="tcnt-골프">0</span></span><span class="tag" id="tag-테니스" onclick="filterTag(&#39;테니스&#39;)">테니스<span class="cnt" id="tcnt-테니스">0</span></span><span class="tag" id="tag-수영" onclick="filterTag(&#39;수영&#39;)">수영<span class="cnt" id="tcnt-수영">0</span></span><span class="tag" id="tag-마라톤" onclick="filterTag(&#39;마라톤&#39;)">마라톤<span class="cnt" id="tcnt-마라톤">0</span></span><span class="tag" id="tag-KBO" onclick="filterTag(&#39;KBO&#39;)">KBO<span class="cnt" id="tcnt-KBO">1</span></span><span class="tag" id="tag-EPL" onclick="filterTag(&#39;EPL&#39;)">EPL<span class="cnt" id="tcnt-EPL">0</span></span><span class="tag" id="tag-MLB" onclick="filterTag(&#39;MLB&#39;)">MLB<span class="cnt" id="tcnt-MLB">0</span></span><span class="tag" id="tag-NBA" onclick="filterTag(&#39;NBA&#39;)">NBA<span class="cnt" id="tcnt-NBA">0</span></span><span class="tag" id="tag-국가대표" onclick="filterTag(&#39;국가대표&#39;)">국가대표<span class="cnt" id="tcnt-국가대표">0</span></span><span class="tag" id="tag-올림픽" onclick="filterTag(&#39;올림픽&#39;)">올림픽<span class="cnt" id="tcnt-올림픽">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">여행 <span class="sub-badge" id="substat-TRAVEL">1건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-국내여행" onclick="filterTag(&#39;국내여행&#39;)">국내여행<span class="cnt" id="tcnt-국내여행">0</span></span><span class="tag" id="tag-해외여행" onclick="filterTag(&#39;해외여행&#39;)">해외여행<span class="cnt" id="tcnt-해외여행">0</span></span><span class="tag" id="tag-일본" onclick="filterTag(&#39;일본&#39;)">일본<span class="cnt" id="tcnt-일본">1</span></span><span class="tag" id="tag-유럽" onclick="filterTag(&#39;유럽&#39;)">유럽<span class="cnt" id="tcnt-유럽">0</span></span><span class="tag" id="tag-미국" onclick="filterTag(&#39;미국&#39;)">미국<span class="cnt" id="tcnt-미국">1</span></span><span class="tag" id="tag-동남아" onclick="filterTag(&#39;동남아&#39;)">동남아<span class="cnt" id="tcnt-동남아">0</span></span><span class="tag" id="tag-맛집" onclick="filterTag(&#39;맛집&#39;)">맛집<span class="cnt" id="tcnt-맛집">1</span></span><span class="tag" id="tag-숙소" onclick="filterTag(&#39;숙소&#39;)">숙소<span class="cnt" id="tcnt-숙소">0</span></span><span class="tag" id="tag-항공권" onclick="filterTag(&#39;항공권&#39;)">항공권<span class="cnt" id="tcnt-항공권">0</span></span><span class="tag" id="tag-여행팁" onclick="filterTag(&#39;여행팁&#39;)">여행팁<span class="cnt" id="tcnt-여행팁">0</span></span><span class="tag" id="tag-골프여행" onclick="filterTag(&#39;골프여행&#39;)">골프여행<span class="cnt" id="tcnt-골프여행">0</span></span><span class="tag" id="tag-의사여행" onclick="filterTag(&#39;의사여행&#39;)">의사여행<span class="cnt" id="tcnt-의사여행">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">음식/맛집 <span class="sub-badge" id="substat-FOOD">0건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-맛집추천" onclick="filterTag(&#39;맛집추천&#39;)">맛집추천<span class="cnt" id="tcnt-맛집추천">0</span></span><span class="tag" id="tag-레스토랑" onclick="filterTag(&#39;레스토랑&#39;)">레스토랑<span class="cnt" id="tcnt-레스토랑">0</span></span><span class="tag" id="tag-와인" onclick="filterTag(&#39;와인&#39;)">와인<span class="cnt" id="tcnt-와인">0</span></span><span class="tag" id="tag-위스키" onclick="filterTag(&#39;위스키&#39;)">위스키<span class="cnt" id="tcnt-위스키">0</span></span><span class="tag" id="tag-사케" onclick="filterTag(&#39;사케&#39;)">사케<span class="cnt" id="tcnt-사케">1</span></span><span class="tag" id="tag-커피" onclick="filterTag(&#39;커피&#39;)">커피<span class="cnt" id="tcnt-커피">0</span></span><span class="tag" id="tag-카페" onclick="filterTag(&#39;카페&#39;)">카페<span class="cnt" id="tcnt-카페">0</span></span><span class="tag" id="tag-배달음식" onclick="filterTag(&#39;배달음식&#39;)">배달음식<span class="cnt" id="tcnt-배달음식">0</span></span><span class="tag" id="tag-요리" onclick="filterTag(&#39;요리&#39;)">요리<span class="cnt" id="tcnt-요리">0</span></span><span class="tag" id="tag-건강식" onclick="filterTag(&#39;건강식&#39;)">건강식<span class="cnt" id="tcnt-건강식">0</span></span></div>
+          </li>
+        
+      </ul>
+    </div>
+  
+    <div class="cat-detail" style="border-left: 3px solid #79c0ff">
+      <h2 style="color:#79c0ff">과학/기술</h2>
+      <div style="color:var(--text3);font-size:12px;margin-bottom:4px">SCIENCE_TECH</div>
+      <div id="catstat-SCIENCE_TECH" style="font-size:13px;color:var(--text2);margin-bottom:14px">메시지 수: 4건 (10%)</div>
+      <ul class="sub-list">
+        
+          <li class="sub-item">
+            <div class="sub-name">과학일반 <span class="sub-badge" id="substat-SCIENCE">1건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-논문" onclick="filterTag(&#39;논문&#39;)">논문<span class="cnt" id="tcnt-논문">1</span></span><span class="tag" id="tag-연구결과" onclick="filterTag(&#39;연구결과&#39;)">연구결과<span class="cnt" id="tcnt-연구결과">0</span></span><span class="tag" id="tag-임상시험" onclick="filterTag(&#39;임상시험&#39;)">임상시험<span class="cnt" id="tcnt-임상시험">0</span></span><span class="tag" id="tag-의학저널" onclick="filterTag(&#39;의학저널&#39;)">의학저널<span class="cnt" id="tcnt-의학저널">0</span></span><span class="tag" id="tag-네이처" onclick="filterTag(&#39;네이처&#39;)">네이처<span class="cnt" id="tcnt-네이처">0</span></span><span class="tag" id="tag-사이언스" onclick="filterTag(&#39;사이언스&#39;)">사이언스<span class="cnt" id="tcnt-사이언스">0</span></span><span class="tag" id="tag-란셋" onclick="filterTag(&#39;란셋&#39;)">란셋<span class="cnt" id="tcnt-란셋">0</span></span><span class="tag" id="tag-NEJM" onclick="filterTag(&#39;NEJM&#39;)">NEJM<span class="cnt" id="tcnt-NEJM">1</span></span><span class="tag" id="tag-JAMA" onclick="filterTag(&#39;JAMA&#39;)">JAMA<span class="cnt" id="tcnt-JAMA">0</span></span><span class="tag" id="tag-물리학" onclick="filterTag(&#39;물리학&#39;)">물리학<span class="cnt" id="tcnt-물리학">0</span></span><span class="tag" id="tag-화학" onclick="filterTag(&#39;화학&#39;)">화학<span class="cnt" id="tcnt-화학">0</span></span><span class="tag" id="tag-생물학" onclick="filterTag(&#39;생물학&#39;)">생물학<span class="cnt" id="tcnt-생물학">0</span></span><span class="tag" id="tag-천문학" onclick="filterTag(&#39;천문학&#39;)">천문학<span class="cnt" id="tcnt-천문학">0</span></span><span class="tag" id="tag-환경과학" onclick="filterTag(&#39;환경과학&#39;)">환경과학<span class="cnt" id="tcnt-환경과학">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">AI/인공지능 <span class="sub-badge" id="substat-AI_TECH">2건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-ChatGPT" onclick="filterTag(&#39;ChatGPT&#39;)">ChatGPT<span class="cnt" id="tcnt-ChatGPT">1</span></span><span class="tag" id="tag-Claude" onclick="filterTag(&#39;Claude&#39;)">Claude<span class="cnt" id="tcnt-Claude">1</span></span><span class="tag" id="tag-Gemini" onclick="filterTag(&#39;Gemini&#39;)">Gemini<span class="cnt" id="tcnt-Gemini">0</span></span><span class="tag" id="tag-AI의료" onclick="filterTag(&#39;AI의료&#39;)">AI의료<span class="cnt" id="tcnt-AI의료">1</span></span><span class="tag" id="tag-AI진단" onclick="filterTag(&#39;AI진단&#39;)">AI진단<span class="cnt" id="tcnt-AI진단">0</span></span><span class="tag" id="tag-AI영상판독" onclick="filterTag(&#39;AI영상판독&#39;)">AI영상판독<span class="cnt" id="tcnt-AI영상판독">0</span></span><span class="tag" id="tag-AI챗봇" onclick="filterTag(&#39;AI챗봇&#39;)">AI챗봇<span class="cnt" id="tcnt-AI챗봇">1</span></span><span class="tag" id="tag-LLM" onclick="filterTag(&#39;LLM&#39;)">LLM<span class="cnt" id="tcnt-LLM">0</span></span><span class="tag" id="tag-딥러닝" onclick="filterTag(&#39;딥러닝&#39;)">딥러닝<span class="cnt" id="tcnt-딥러닝">0</span></span><span class="tag" id="tag-AI규제" onclick="filterTag(&#39;AI규제&#39;)">AI규제<span class="cnt" id="tcnt-AI규제">0</span></span><span class="tag" id="tag-AI윤리" onclick="filterTag(&#39;AI윤리&#39;)">AI윤리<span class="cnt" id="tcnt-AI윤리">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">디지털헬스 <span class="sub-badge" id="substat-DIGITAL_HEALTH">1건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-원격진료" onclick="filterTag(&#39;원격진료&#39;)">원격진료<span class="cnt" id="tcnt-원격진료">1</span></span><span class="tag" id="tag-비대면진료" onclick="filterTag(&#39;비대면진료&#39;)">비대면진료<span class="cnt" id="tcnt-비대면진료">1</span></span><span class="tag" id="tag-디지털헬스케어" onclick="filterTag(&#39;디지털헬스케어&#39;)">디지털헬스케어<span class="cnt" id="tcnt-디지털헬스케어">0</span></span><span class="tag" id="tag-웨어러블" onclick="filterTag(&#39;웨어러블&#39;)">웨어러블<span class="cnt" id="tcnt-웨어러블">0</span></span><span class="tag" id="tag-스마트워치" onclick="filterTag(&#39;스마트워치&#39;)">스마트워치<span class="cnt" id="tcnt-스마트워치">0</span></span><span class="tag" id="tag-혈당모니터링" onclick="filterTag(&#39;혈당모니터링&#39;)">혈당모니터링<span class="cnt" id="tcnt-혈당모니터링">0</span></span><span class="tag" id="tag-앱기반치료" onclick="filterTag(&#39;앱기반치료&#39;)">앱기반치료<span class="cnt" id="tcnt-앱기반치료">0</span></span><span class="tag" id="tag-PHR" onclick="filterTag(&#39;PHR&#39;)">PHR<span class="cnt" id="tcnt-PHR">0</span></span><span class="tag" id="tag-EMR발전" onclick="filterTag(&#39;EMR발전&#39;)">EMR발전<span class="cnt" id="tcnt-EMR발전">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">가전/IT <span class="sub-badge" id="substat-GADGET_IT">0건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-스마트폰" onclick="filterTag(&#39;스마트폰&#39;)">스마트폰<span class="cnt" id="tcnt-스마트폰">0</span></span><span class="tag" id="tag-아이폰" onclick="filterTag(&#39;아이폰&#39;)">아이폰<span class="cnt" id="tcnt-아이폰">0</span></span><span class="tag" id="tag-갤럭시" onclick="filterTag(&#39;갤럭시&#39;)">갤럭시<span class="cnt" id="tcnt-갤럭시">0</span></span><span class="tag" id="tag-노트북" onclick="filterTag(&#39;노트북&#39;)">노트북<span class="cnt" id="tcnt-노트북">0</span></span><span class="tag" id="tag-애플워치" onclick="filterTag(&#39;애플워치&#39;)">애플워치<span class="cnt" id="tcnt-애플워치">0</span></span><span class="tag" id="tag-태블릿" onclick="filterTag(&#39;태블릿&#39;)">태블릿<span class="cnt" id="tcnt-태블릿">0</span></span><span class="tag" id="tag-카메라" onclick="filterTag(&#39;카메라&#39;)">카메라<span class="cnt" id="tcnt-카메라">0</span></span><span class="tag" id="tag-드론" onclick="filterTag(&#39;드론&#39;)">드론<span class="cnt" id="tcnt-드론">0</span></span><span class="tag" id="tag-앱추천" onclick="filterTag(&#39;앱추천&#39;)">앱추천<span class="cnt" id="tcnt-앱추천">0</span></span><span class="tag" id="tag-소프트웨어" onclick="filterTag(&#39;소프트웨어&#39;)">소프트웨어<span class="cnt" id="tcnt-소프트웨어">0</span></span></div>
+          </li>
+        
+      </ul>
+    </div>
+  
+    <div class="cat-detail" style="border-left: 3px solid #a5d6ff">
+      <h2 style="color:#a5d6ff">사회/이슈</h2>
+      <div style="color:var(--text3);font-size:12px;margin-bottom:4px">SOCIAL_ISSUES</div>
+      <div id="catstat-SOCIAL_ISSUES" style="font-size:13px;color:var(--text2);margin-bottom:14px">메시지 수: 2건 (5%)</div>
+      <ul class="sub-list">
+        
+          <li class="sub-item">
+            <div class="sub-name">범죄/사건사고 <span class="sub-badge" id="substat-CRIME">0건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-살인" onclick="filterTag(&#39;살인&#39;)">살인<span class="cnt" id="tcnt-살인">0</span></span><span class="tag" id="tag-강도" onclick="filterTag(&#39;강도&#39;)">강도<span class="cnt" id="tcnt-강도">0</span></span><span class="tag" id="tag-사기" onclick="filterTag(&#39;사기&#39;)">사기<span class="cnt" id="tcnt-사기">0</span></span><span class="tag" id="tag-의료사기" onclick="filterTag(&#39;의료사기&#39;)">의료사기<span class="cnt" id="tcnt-의료사기">0</span></span><span class="tag" id="tag-보험사기" onclick="filterTag(&#39;보험사기&#39;)">보험사기<span class="cnt" id="tcnt-보험사기">0</span></span><span class="tag" id="tag-음주운전" onclick="filterTag(&#39;음주운전&#39;)">음주운전<span class="cnt" id="tcnt-음주운전">0</span></span><span class="tag" id="tag-교통사고" onclick="filterTag(&#39;교통사고&#39;)">교통사고<span class="cnt" id="tcnt-교통사고">0</span></span><span class="tag" id="tag-화재" onclick="filterTag(&#39;화재&#39;)">화재<span class="cnt" id="tcnt-화재">0</span></span><span class="tag" id="tag-재난" onclick="filterTag(&#39;재난&#39;)">재난<span class="cnt" id="tcnt-재난">0</span></span><span class="tag" id="tag-자연재해" onclick="filterTag(&#39;자연재해&#39;)">자연재해<span class="cnt" id="tcnt-자연재해">0</span></span><span class="tag" id="tag-학교폭력" onclick="filterTag(&#39;학교폭력&#39;)">학교폭력<span class="cnt" id="tcnt-학교폭력">0</span></span><span class="tag" id="tag-직장내괴롭힘" onclick="filterTag(&#39;직장내괴롭힘&#39;)">직장내괴롭힘<span class="cnt" id="tcnt-직장내괴롭힘">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">정치 <span class="sub-badge" id="substat-POLITICS">1건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-대통령" onclick="filterTag(&#39;대통령&#39;)">대통령<span class="cnt" id="tcnt-대통령">0</span></span><span class="tag" id="tag-국회" onclick="filterTag(&#39;국회&#39;)">국회<span class="cnt" id="tcnt-국회">0</span></span><span class="tag" id="tag-여당" onclick="filterTag(&#39;여당&#39;)">여당<span class="cnt" id="tcnt-여당">0</span></span><span class="tag" id="tag-야당" onclick="filterTag(&#39;야당&#39;)">야당<span class="cnt" id="tcnt-야당">0</span></span><span class="tag" id="tag-선거" onclick="filterTag(&#39;선거&#39;)">선거<span class="cnt" id="tcnt-선거">1</span></span><span class="tag" id="tag-정책" onclick="filterTag(&#39;정책&#39;)">정책<span class="cnt" id="tcnt-정책">1</span></span><span class="tag" id="tag-법안" onclick="filterTag(&#39;법안&#39;)">법안<span class="cnt" id="tcnt-법안">0</span></span><span class="tag" id="tag-의료정책" onclick="filterTag(&#39;의료정책&#39;)">의료정책<span class="cnt" id="tcnt-의료정책">1</span></span><span class="tag" id="tag-보건복지" onclick="filterTag(&#39;보건복지&#39;)">보건복지<span class="cnt" id="tcnt-보건복지">0</span></span><span class="tag" id="tag-국정감사" onclick="filterTag(&#39;국정감사&#39;)">국정감사<span class="cnt" id="tcnt-국정감사">0</span></span><span class="tag" id="tag-탄핵" onclick="filterTag(&#39;탄핵&#39;)">탄핵<span class="cnt" id="tcnt-탄핵">0</span></span><span class="tag" id="tag-개헌" onclick="filterTag(&#39;개헌&#39;)">개헌<span class="cnt" id="tcnt-개헌">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">복지/사회 <span class="sub-badge" id="substat-WELFARE">1건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-저출생" onclick="filterTag(&#39;저출생&#39;)">저출생<span class="cnt" id="tcnt-저출생">1</span></span><span class="tag" id="tag-고령화" onclick="filterTag(&#39;고령화&#39;)">고령화<span class="cnt" id="tcnt-고령화">1</span></span><span class="tag" id="tag-연금" onclick="filterTag(&#39;연금&#39;)">연금<span class="cnt" id="tcnt-연금">1</span></span><span class="tag" id="tag-국민연금" onclick="filterTag(&#39;국민연금&#39;)">국민연금<span class="cnt" id="tcnt-국민연금">1</span></span><span class="tag" id="tag-건강보험" onclick="filterTag(&#39;건강보험&#39;)">건강보험<span class="cnt" id="tcnt-건강보험">0</span></span><span class="tag" id="tag-의료급여" onclick="filterTag(&#39;의료급여&#39;)">의료급여<span class="cnt" id="tcnt-의료급여">0</span></span><span class="tag" id="tag-복지정책" onclick="filterTag(&#39;복지정책&#39;)">복지정책<span class="cnt" id="tcnt-복지정책">0</span></span><span class="tag" id="tag-교육" onclick="filterTag(&#39;교육&#39;)">교육<span class="cnt" id="tcnt-교육">0</span></span><span class="tag" id="tag-주거" onclick="filterTag(&#39;주거&#39;)">주거<span class="cnt" id="tcnt-주거">0</span></span><span class="tag" id="tag-환경" onclick="filterTag(&#39;환경&#39;)">환경<span class="cnt" id="tcnt-환경">0</span></span></div>
+          </li>
+        
+      </ul>
+    </div>
+  
+    <div class="cat-detail" style="border-left: 3px solid #ffa657">
+      <h2 style="color:#ffa657">파일/첨부</h2>
+      <div style="color:var(--text3);font-size:12px;margin-bottom:4px">FILE_ATTACHMENT</div>
+      <div id="catstat-FILE_ATTACHMENT" style="font-size:13px;color:var(--text2);margin-bottom:14px">메시지 수: 0건 (0%)</div>
+      <ul class="sub-list">
+        
+          <li class="sub-item">
+            <div class="sub-name">문서파일 <span class="sub-badge" id="substat-DOC_FILE">0건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-PDF" onclick="filterTag(&#39;PDF&#39;)">PDF<span class="cnt" id="tcnt-PDF">1</span></span><span class="tag" id="tag-PPT" onclick="filterTag(&#39;PPT&#39;)">PPT<span class="cnt" id="tcnt-PPT">0</span></span><span class="tag" id="tag-PPTX" onclick="filterTag(&#39;PPTX&#39;)">PPTX<span class="cnt" id="tcnt-PPTX">0</span></span><span class="tag" id="tag-Word" onclick="filterTag(&#39;Word&#39;)">Word<span class="cnt" id="tcnt-Word">0</span></span><span class="tag" id="tag-HWP" onclick="filterTag(&#39;HWP&#39;)">HWP<span class="cnt" id="tcnt-HWP">0</span></span><span class="tag" id="tag-Excel" onclick="filterTag(&#39;Excel&#39;)">Excel<span class="cnt" id="tcnt-Excel">0</span></span><span class="tag" id="tag-가이드라인문서" onclick="filterTag(&#39;가이드라인문서&#39;)">가이드라인문서<span class="cnt" id="tcnt-가이드라인문서">0</span></span><span class="tag" id="tag-논문파일" onclick="filterTag(&#39;논문파일&#39;)">논문파일<span class="cnt" id="tcnt-논문파일">0</span></span><span class="tag" id="tag-계약서" onclick="filterTag(&#39;계약서&#39;)">계약서<span class="cnt" id="tcnt-계약서">0</span></span><span class="tag" id="tag-동의서" onclick="filterTag(&#39;동의서&#39;)">동의서<span class="cnt" id="tcnt-동의서">0</span></span><span class="tag" id="tag-양식" onclick="filterTag(&#39;양식&#39;)">양식<span class="cnt" id="tcnt-양식">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">이미지파일 <span class="sub-badge" id="substat-IMG_FILE">0건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-JPG" onclick="filterTag(&#39;JPG&#39;)">JPG<span class="cnt" id="tcnt-JPG">1</span></span><span class="tag" id="tag-PNG" onclick="filterTag(&#39;PNG&#39;)">PNG<span class="cnt" id="tcnt-PNG">0</span></span><span class="tag" id="tag-사진공유" onclick="filterTag(&#39;사진공유&#39;)">사진공유<span class="cnt" id="tcnt-사진공유">0</span></span><span class="tag" id="tag-스크린샷" onclick="filterTag(&#39;스크린샷&#39;)">스크린샷<span class="cnt" id="tcnt-스크린샷">0</span></span><span class="tag" id="tag-시술사진" onclick="filterTag(&#39;시술사진&#39;)">시술사진<span class="cnt" id="tcnt-시술사진">0</span></span><span class="tag" id="tag-비포애프터" onclick="filterTag(&#39;비포애프터&#39;)">비포애프터<span class="cnt" id="tcnt-비포애프터">1</span></span><span class="tag" id="tag-사례사진" onclick="filterTag(&#39;사례사진&#39;)">사례사진<span class="cnt" id="tcnt-사례사진">0</span></span><span class="tag" id="tag-논문그림" onclick="filterTag(&#39;논문그림&#39;)">논문그림<span class="cnt" id="tcnt-논문그림">0</span></span><span class="tag" id="tag-인포그래픽" onclick="filterTag(&#39;인포그래픽&#39;)">인포그래픽<span class="cnt" id="tcnt-인포그래픽">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">동영상파일 <span class="sub-badge" id="substat-VID_FILE">0건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-MP4" onclick="filterTag(&#39;MP4&#39;)">MP4<span class="cnt" id="tcnt-MP4">0</span></span><span class="tag" id="tag-시술영상" onclick="filterTag(&#39;시술영상&#39;)">시술영상<span class="cnt" id="tcnt-시술영상">0</span></span><span class="tag" id="tag-강의영상" onclick="filterTag(&#39;강의영상&#39;)">강의영상<span class="cnt" id="tcnt-강의영상">0</span></span><span class="tag" id="tag-수술영상" onclick="filterTag(&#39;수술영상&#39;)">수술영상<span class="cnt" id="tcnt-수술영상">0</span></span><span class="tag" id="tag-라이브서저리녹화" onclick="filterTag(&#39;라이브서저리녹화&#39;)">라이브서저리녹화<span class="cnt" id="tcnt-라이브서저리녹화">0</span></span><span class="tag" id="tag-교육영상" onclick="filterTag(&#39;교육영상&#39;)">교육영상<span class="cnt" id="tcnt-교육영상">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">링크/URL <span class="sub-badge" id="substat-LINK">0건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-뉴스링크" onclick="filterTag(&#39;뉴스링크&#39;)">뉴스링크<span class="cnt" id="tcnt-뉴스링크">0</span></span><span class="tag" id="tag-논문링크" onclick="filterTag(&#39;논문링크&#39;)">논문링크<span class="cnt" id="tcnt-논문링크">0</span></span><span class="tag" id="tag-유튜브링크" onclick="filterTag(&#39;유튜브링크&#39;)">유튜브링크<span class="cnt" id="tcnt-유튜브링크">0</span></span><span class="tag" id="tag-쇼핑링크" onclick="filterTag(&#39;쇼핑링크&#39;)">쇼핑링크<span class="cnt" id="tcnt-쇼핑링크">0</span></span><span class="tag" id="tag-이벤트링크" onclick="filterTag(&#39;이벤트링크&#39;)">이벤트링크<span class="cnt" id="tcnt-이벤트링크">0</span></span><span class="tag" id="tag-공지링크" onclick="filterTag(&#39;공지링크&#39;)">공지링크<span class="cnt" id="tcnt-공지링크">0</span></span><span class="tag" id="tag-SNS링크" onclick="filterTag(&#39;SNS링크&#39;)">SNS링크<span class="cnt" id="tcnt-SNS링크">0</span></span></div>
+          </li>
+        
+      </ul>
+    </div>
+  
+    <div class="cat-detail" style="border-left: 3px solid #56d364">
+      <h2 style="color:#56d364">유머/일상</h2>
+      <div style="color:var(--text3);font-size:12px;margin-bottom:4px">HUMOR_DAILY</div>
+      <div id="catstat-HUMOR_DAILY" style="font-size:13px;color:var(--text2);margin-bottom:14px">메시지 수: 1건 (3%)</div>
+      <ul class="sub-list">
+        
+          <li class="sub-item">
+            <div class="sub-name">유머/밈 <span class="sub-badge" id="substat-HUMOR">1건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-개그" onclick="filterTag(&#39;개그&#39;)">개그<span class="cnt" id="tcnt-개그">1</span></span><span class="tag" id="tag-밈" onclick="filterTag(&#39;밈&#39;)">밈<span class="cnt" id="tcnt-밈">0</span></span><span class="tag" id="tag-짤방" onclick="filterTag(&#39;짤방&#39;)">짤방<span class="cnt" id="tcnt-짤방">0</span></span><span class="tag" id="tag-패러디" onclick="filterTag(&#39;패러디&#39;)">패러디<span class="cnt" id="tcnt-패러디">0</span></span><span class="tag" id="tag-블랙코미디" onclick="filterTag(&#39;블랙코미디&#39;)">블랙코미디<span class="cnt" id="tcnt-블랙코미디">0</span></span><span class="tag" id="tag-의사유머" onclick="filterTag(&#39;의사유머&#39;)">의사유머<span class="cnt" id="tcnt-의사유머">0</span></span><span class="tag" id="tag-병원유머" onclick="filterTag(&#39;병원유머&#39;)">병원유머<span class="cnt" id="tcnt-병원유머">0</span></span><span class="tag" id="tag-직업유머" onclick="filterTag(&#39;직업유머&#39;)">직업유머<span class="cnt" id="tcnt-직업유머">0</span></span><span class="tag" id="tag-시사풍자" onclick="filterTag(&#39;시사풍자&#39;)">시사풍자<span class="cnt" id="tcnt-시사풍자">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">일상 <span class="sub-badge" id="substat-DAILY_LIFE">0건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-날씨" onclick="filterTag(&#39;날씨&#39;)">날씨<span class="cnt" id="tcnt-날씨">0</span></span><span class="tag" id="tag-인사" onclick="filterTag(&#39;인사&#39;)">인사<span class="cnt" id="tcnt-인사">0</span></span><span class="tag" id="tag-안부" onclick="filterTag(&#39;안부&#39;)">안부<span class="cnt" id="tcnt-안부">0</span></span><span class="tag" id="tag-생일축하" onclick="filterTag(&#39;생일축하&#39;)">생일축하<span class="cnt" id="tcnt-생일축하">0</span></span><span class="tag" id="tag-기념일" onclick="filterTag(&#39;기념일&#39;)">기념일<span class="cnt" id="tcnt-기념일">0</span></span><span class="tag" id="tag-경조사" onclick="filterTag(&#39;경조사&#39;)">경조사<span class="cnt" id="tcnt-경조사">0</span></span><span class="tag" id="tag-가족" onclick="filterTag(&#39;가족&#39;)">가족<span class="cnt" id="tcnt-가족">0</span></span><span class="tag" id="tag-자녀교육" onclick="filterTag(&#39;자녀교육&#39;)">자녀교육<span class="cnt" id="tcnt-자녀교육">0</span></span><span class="tag" id="tag-육아" onclick="filterTag(&#39;육아&#39;)">육아<span class="cnt" id="tcnt-육아">0</span></span><span class="tag" id="tag-취미" onclick="filterTag(&#39;취미&#39;)">취미<span class="cnt" id="tcnt-취미">0</span></span><span class="tag" id="tag-독서" onclick="filterTag(&#39;독서&#39;)">독서<span class="cnt" id="tcnt-독서">0</span></span><span class="tag" id="tag-건강관리" onclick="filterTag(&#39;건강관리&#39;)">건강관리<span class="cnt" id="tcnt-건강관리">0</span></span><span class="tag" id="tag-운동" onclick="filterTag(&#39;운동&#39;)">운동<span class="cnt" id="tcnt-운동">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">동기부여/철학 <span class="sub-badge" id="substat-MOTIVATION">0건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-명언" onclick="filterTag(&#39;명언&#39;)">명언<span class="cnt" id="tcnt-명언">0</span></span><span class="tag" id="tag-자기계발" onclick="filterTag(&#39;자기계발&#39;)">자기계발<span class="cnt" id="tcnt-자기계발">0</span></span><span class="tag" id="tag-인생관" onclick="filterTag(&#39;인생관&#39;)">인생관<span class="cnt" id="tcnt-인생관">0</span></span><span class="tag" id="tag-철학" onclick="filterTag(&#39;철학&#39;)">철학<span class="cnt" id="tcnt-철학">0</span></span><span class="tag" id="tag-종교" onclick="filterTag(&#39;종교&#39;)">종교<span class="cnt" id="tcnt-종교">0</span></span><span class="tag" id="tag-감사" onclick="filterTag(&#39;감사&#39;)">감사<span class="cnt" id="tcnt-감사">0</span></span><span class="tag" id="tag-위로" onclick="filterTag(&#39;위로&#39;)">위로<span class="cnt" id="tcnt-위로">0</span></span><span class="tag" id="tag-응원" onclick="filterTag(&#39;응원&#39;)">응원<span class="cnt" id="tcnt-응원">0</span></span></div>
+          </li>
+        
+      </ul>
+    </div>
+  
+    <div class="cat-detail" style="border-left: 3px solid #b3b3b3">
+      <h2 style="color:#b3b3b3">기타</h2>
+      <div style="color:var(--text3);font-size:12px;margin-bottom:4px">ETC</div>
+      <div id="catstat-ETC" style="font-size:13px;color:var(--text2);margin-bottom:14px">메시지 수: 0건 (0%)</div>
+      <ul class="sub-list">
+        
+          <li class="sub-item">
+            <div class="sub-name">미분류 <span class="sub-badge" id="substat-UNCLASSIFIED">0건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-기타" onclick="filterTag(&#39;기타&#39;)">기타<span class="cnt" id="tcnt-기타">0</span></span><span class="tag" id="tag-분류불가" onclick="filterTag(&#39;분류불가&#39;)">분류불가<span class="cnt" id="tcnt-분류불가">0</span></span><span class="tag" id="tag-스팸" onclick="filterTag(&#39;스팸&#39;)">스팸<span class="cnt" id="tcnt-스팸">0</span></span><span class="tag" id="tag-광고" onclick="filterTag(&#39;광고&#39;)">광고<span class="cnt" id="tcnt-광고">1</span></span><span class="tag" id="tag-단순공유" onclick="filterTag(&#39;단순공유&#39;)">단순공유<span class="cnt" id="tcnt-단순공유">0</span></span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">그룹관리 <span class="sub-badge" id="substat-GROUP_ADMIN">0건</span></div>
+            <div class="tag-cloud"><span class="tag" id="tag-공지" onclick="filterTag(&#39;공지&#39;)">공지<span class="cnt" id="tcnt-공지">0</span></span><span class="tag" id="tag-투표" onclick="filterTag(&#39;투표&#39;)">투표<span class="cnt" id="tcnt-투표">0</span></span><span class="tag" id="tag-일정조율" onclick="filterTag(&#39;일정조율&#39;)">일정조율<span class="cnt" id="tcnt-일정조율">0</span></span><span class="tag" id="tag-모임안내" onclick="filterTag(&#39;모임안내&#39;)">모임안내<span class="cnt" id="tcnt-모임안내">0</span></span><span class="tag" id="tag-회비" onclick="filterTag(&#39;회비&#39;)">회비<span class="cnt" id="tcnt-회비">0</span></span><span class="tag" id="tag-단체주문" onclick="filterTag(&#39;단체주문&#39;)">단체주문<span class="cnt" id="tcnt-단체주문">0</span></span><span class="tag" id="tag-참석여부" onclick="filterTag(&#39;참석여부&#39;)">참석여부<span class="cnt" id="tcnt-참석여부">0</span></span></div>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+    </div>
+
+    <!-- INPUT TAB -->
+    <div class="panel" id="tab-input">
+      <div class="notice">
+        <strong>데이터 입력 방법</strong><br>
+        카카오톡 채팅방 내보내기(txt) 또는 직접 텍스트를 붙여넣기 하세요.<br>
+        각 메시지는 줄바꿈으로 구분됩니다. 분류는 <strong>categories.txt</strong>의 태그와 키워드 매칭 방식으로 이루어집니다.<br>
+        개인정보(이름, 번호 등)는 입력 전 제거 후 사용하세요.
+      </div>
+
+      <div class="upload-zone" id="uploadZone">
+        <div class="upload-icon">📂</div>
+        <p>채팅 txt 파일을 드래그하거나 클릭하여 업로드</p>
+        <p style="margin-top:6px; font-size:12px; color:var(--text3)">카카오톡 내보내기 파일 (.txt) 지원</p>
+        <input type="file" id="fileInput" accept=".txt" style="display:none">
+      </div>
+
+      <div class="input-area">
+        <div class="chart-title" style="margin-bottom:12px">직접 텍스트 입력</div>
+        <textarea id="chatInput" placeholder="여기에 대화 내용을 붙여넣기 하세요...
+
+예시:
+[2024.03.15 오전 9:23] 의사A: 오늘 보톡스 세미나 참석하시나요?
+[2024.03.15 오전 9:24] 의사B: 네, 코엑스에서 하는 거죠? 필러 케이스도 발표하는데"></textarea>
+        <div style="display:flex; gap:8px; margin-top:10px;">
+          <button class="btn-primary" onclick="analyzeText()">🔍 분석 시작</button>
+          <button class="btn" onclick="loadDemoData()">데모 데이터 로드</button>
+          <button class="btn" onclick="document.getElementById(&#39;chatInput&#39;).value=&#39;&#39;">초기화</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAXONOMY TAB -->
+    <div class="panel" id="tab-taxonomy">
+      <div class="notice">
+        <strong>categories.txt 기반 분류 체계</strong> — 이 목록은 해당 파일을 수정하면 자동으로 반영됩니다.<br>
+        새 태그는 파일의 해당 SUBCATEGORY TAGS 줄에 추가하세요.
+      </div>
+      <div id="taxonomyView">
+    <div class="cat-detail" style="border-left: 3px solid #58a6ff">
+      <h2 style="color:#58a6ff">미디어/뉴스</h2>
+      <p style="color:var(--text3);font-size:12px;margin-bottom:14px">6개 소분류 · 49개 태그</p>
+      <ul class="sub-list">
+        
+          <li class="sub-item">
+            <div class="sub-name">일간지 <span class="sub-badge">10개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">조선일보</span><span class="tag">중앙일보</span><span class="tag">동아일보</span><span class="tag">한겨레</span><span class="tag">경향신문</span><span class="tag">한국일보</span><span class="tag">국민일보</span><span class="tag">서울신문</span><span class="tag">세계일보</span><span class="tag">문화일보</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">경제지 <span class="sub-badge">9개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">한국경제</span><span class="tag">매일경제</span><span class="tag">머니투데이</span><span class="tag">이데일리</span><span class="tag">아시아경제</span><span class="tag">헤럴드경제</span><span class="tag">파이낸셜뉴스</span><span class="tag">서울경제</span><span class="tag">이코노미스트</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">주간지 <span class="sub-badge">7개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">시사IN</span><span class="tag">주간조선</span><span class="tag">주간동아</span><span class="tag">주간경향</span><span class="tag">한겨레21</span><span class="tag">뉴스위크코리아</span><span class="tag">시사저널</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">월간지 <span class="sub-badge">5개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">신동아</span><span class="tag">월간조선</span><span class="tag">월간중앙</span><span class="tag">샘터</span><span class="tag">뿌리깊은나무</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">방송뉴스 <span class="sub-badge">9개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">KBS</span><span class="tag">MBC</span><span class="tag">SBS</span><span class="tag">JTBC</span><span class="tag">TV조선</span><span class="tag">채널A</span><span class="tag">MBN</span><span class="tag">YTN</span><span class="tag">연합뉴스TV</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">온라인뉴스 <span class="sub-badge">9개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">네이버뉴스</span><span class="tag">다음뉴스</span><span class="tag">카카오뉴스</span><span class="tag">유튜브뉴스</span><span class="tag">뉴스레터</span><span class="tag">해외언론</span><span class="tag">BBC</span><span class="tag">CNN</span><span class="tag">NYT</span></div>
+          </li>
+        
+      </ul>
+    </div>
+  
+    <div class="cat-detail" style="border-left: 3px solid #3fb950">
+      <h2 style="color:#3fb950">경제/투자</h2>
+      <p style="color:var(--text3);font-size:12px;margin-bottom:14px">5개 소분류 · 87개 태그</p>
+      <ul class="sub-list">
+        
+          <li class="sub-item">
+            <div class="sub-name">경제일반 <span class="sub-badge">14개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">금리</span><span class="tag">환율</span><span class="tag">물가</span><span class="tag">인플레이션</span><span class="tag">GDP</span><span class="tag">무역</span><span class="tag">경기침체</span><span class="tag">재정정책</span><span class="tag">통화정책</span><span class="tag">한국은행</span><span class="tag">연준</span><span class="tag">달러</span><span class="tag">엔화</span><span class="tag">위안화</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">주식 <span class="sub-badge">22개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">코스피</span><span class="tag">코스닥</span><span class="tag">나스닥</span><span class="tag">NYSE</span><span class="tag">S&amp;P500</span><span class="tag">개별종목</span><span class="tag">공매도</span><span class="tag">ETF</span><span class="tag">ELS</span><span class="tag">테마주</span><span class="tag">배당주</span><span class="tag">성장주</span><span class="tag">가치주</span><span class="tag">차트분석</span><span class="tag">기본분석</span><span class="tag">공시</span><span class="tag">실적</span><span class="tag">PER</span><span class="tag">PBR</span><span class="tag">ROE</span><span class="tag">외국인매매</span><span class="tag">기관매매</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">부동산 <span class="sub-badge">24개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">아파트</span><span class="tag">분양</span><span class="tag">재건축</span><span class="tag">재개발</span><span class="tag">청약</span><span class="tag">전세</span><span class="tag">월세</span><span class="tag">갭투자</span><span class="tag">경매</span><span class="tag">공시지가</span><span class="tag">취득세</span><span class="tag">양도세</span><span class="tag">임대사업자</span><span class="tag">토지</span><span class="tag">상가</span><span class="tag">오피스텔</span><span class="tag">빌딩</span><span class="tag">GTX</span><span class="tag">개발호재</span><span class="tag">규제</span><span class="tag">LTV</span><span class="tag">DSR</span><span class="tag">강남</span><span class="tag">서울</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">대체투자 <span class="sub-badge">14개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">암호화폐</span><span class="tag">비트코인</span><span class="tag">이더리움</span><span class="tag">금</span><span class="tag">원자재</span><span class="tag">원유</span><span class="tag">채권</span><span class="tag">사모펀드</span><span class="tag">VC</span><span class="tag">스타트업투자</span><span class="tag">해외주식</span><span class="tag">미국주식</span><span class="tag">일본주식</span><span class="tag">중국주식</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">세금/재무 <span class="sub-badge">13개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">종합소득세</span><span class="tag">양도소득세</span><span class="tag">법인세</span><span class="tag">절세</span><span class="tag">세무사</span><span class="tag">회계사</span><span class="tag">법인설립</span><span class="tag">금융소득</span><span class="tag">건강보험료</span><span class="tag">피부양자</span><span class="tag">증여</span><span class="tag">상속</span><span class="tag">절세전략</span></div>
+          </li>
+        
+      </ul>
+    </div>
+  
+    <div class="cat-detail" style="border-left: 3px solid #f0883e">
+      <h2 style="color:#f0883e">의학/의료</h2>
+      <p style="color:var(--text3);font-size:12px;margin-bottom:14px">11개 소분류 · 172개 태그</p>
+      <ul class="sub-list">
+        
+          <li class="sub-item">
+            <div class="sub-name">의학뉴스/정책 <span class="sub-badge">18개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">건강보험</span><span class="tag">급여</span><span class="tag">비급여</span><span class="tag">의료법</span><span class="tag">의정갈등</span><span class="tag">의사파업</span><span class="tag">전공의</span><span class="tag">의대정원</span><span class="tag">심평원</span><span class="tag">복지부</span><span class="tag">식약처</span><span class="tag">의료사고</span><span class="tag">판례</span><span class="tag">의료분쟁</span><span class="tag">의협</span><span class="tag">가이드라인</span><span class="tag">임상시험</span><span class="tag">신약허가</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">임상의학 <span class="sub-badge">16개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">내과</span><span class="tag">외과</span><span class="tag">피부과</span><span class="tag">가정의학과</span><span class="tag">신경과</span><span class="tag">정형외과</span><span class="tag">산부인과</span><span class="tag">소아과</span><span class="tag">안과</span><span class="tag">이비인후과</span><span class="tag">비뇨기과</span><span class="tag">정신건강의학과</span><span class="tag">진단검사</span><span class="tag">영상의학</span><span class="tag">병리</span><span class="tag">응급의학</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">미용의학 <span class="sub-badge">8개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">미용시술</span><span class="tag">피부미용</span><span class="tag">안티에이징</span><span class="tag">체형관리</span><span class="tag">성형</span><span class="tag">비수술적시술</span><span class="tag">자연스러운결과</span><span class="tag">시술후관리</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">보톡스/필러 <span class="sub-badge">23개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">보톡스</span><span class="tag">보툴리눔독소</span><span class="tag">앨러간</span><span class="tag">메디톡스</span><span class="tag">휴젤</span><span class="tag">대웅</span><span class="tag">이노톡스</span><span class="tag">코어톡스</span><span class="tag">나보타</span><span class="tag">주름개선</span><span class="tag">사각턱</span><span class="tag">종아리</span><span class="tag">팔자주름</span><span class="tag">히알루론산필러</span><span class="tag">레스틸렌</span><span class="tag">쥬비덤</span><span class="tag">테아솔</span><span class="tag">벨라스트</span><span class="tag">이브아르</span><span class="tag">볼루마</span><span class="tag">코필러</span><span class="tag">입술필러</span><span class="tag">턱필러</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">레이저/에너지장비 <span class="sub-badge">24개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">레이저</span><span class="tag">피코레이저</span><span class="tag">롱펄스</span><span class="tag">엔디야그</span><span class="tag">CO2레이저</span><span class="tag">어븀야그</span><span class="tag">IPL</span><span class="tag">RF</span><span class="tag">HIFU</span><span class="tag">울쎄라</span><span class="tag">슈링크</span><span class="tag">써마지</span><span class="tag">인모드</span><span class="tag">포텐자</span><span class="tag">피코웨이</span><span class="tag">피코슈어</span><span class="tag">스타워커</span><span class="tag">시네론</span><span class="tag">클라리티</span><span class="tag">아포지</span><span class="tag">레이저토닝</span><span class="tag">색소치료</span><span class="tag">혈관치료</span><span class="tag">제모</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">리프팅 <span class="sub-badge">16개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">실리프팅</span><span class="tag">실</span><span class="tag">PDO실</span><span class="tag">PCL실</span><span class="tag">PLLA실</span><span class="tag">콘실</span><span class="tag">스피큘</span><span class="tag">노블실</span><span class="tag">민트리프트</span><span class="tag">해피리프트</span><span class="tag">울트라리프팅</span><span class="tag">V리프팅</span><span class="tag">페이스리프팅</span><span class="tag">넥리프팅</span><span class="tag">안검하수</span><span class="tag">눈꺼풀리프팅</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">쁘띠성형 <span class="sub-badge">15개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">쌍꺼풀</span><span class="tag">눈매교정</span><span class="tag">코필러</span><span class="tag">지방분해주사</span><span class="tag">윤곽주사</span><span class="tag">물광주사</span><span class="tag">엑소좀</span><span class="tag">줄기세포</span><span class="tag">태반주사</span><span class="tag">PRP</span><span class="tag">콜라겐주사</span><span class="tag">연어주사</span><span class="tag">MTS</span><span class="tag">더마롤러</span><span class="tag">마이크로니들링</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">체형/비만 <span class="sub-badge">12개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">지방흡입</span><span class="tag">지방분해</span><span class="tag">울트라셀</span><span class="tag">쿨스컬프팅</span><span class="tag">벨라쉐이프</span><span class="tag">바디FX</span><span class="tag">비만치료</span><span class="tag">비만약</span><span class="tag">삭센다</span><span class="tag">위고비</span><span class="tag">마운자로</span><span class="tag">체중감량</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">피부관리 <span class="sub-badge">14개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">보습</span><span class="tag">미백</span><span class="tag">여드름</span><span class="tag">흉터</span><span class="tag">모공</span><span class="tag">민감성</span><span class="tag">아토피</span><span class="tag">건선</span><span class="tag">색소침착</span><span class="tag">기미</span><span class="tag">잡티</span><span class="tag">홍조</span><span class="tag">주사</span><span class="tag">피부과학</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">약품/처방 <span class="sub-badge">15개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">전문의약품</span><span class="tag">일반의약품</span><span class="tag">항생제</span><span class="tag">항염증제</span><span class="tag">스테로이드</span><span class="tag">진통제</span><span class="tag">수면제</span><span class="tag">항우울제</span><span class="tag">마약류관리</span><span class="tag">처방전</span><span class="tag">DUR</span><span class="tag">약물상호작용</span><span class="tag">신약</span><span class="tag">제네릭</span><span class="tag">바이오시밀러</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">암검진 <span class="sub-badge">11개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">5대암검진</span><span class="tag">위암</span><span class="tag">대장암</span><span class="tag">간암</span><span class="tag">유방암</span><span class="tag">자궁경부암</span><span class="tag">국가암검진</span><span class="tag">내시경</span><span class="tag">조직검사</span><span class="tag">종양표지자</span><span class="tag">영상검사</span></div>
+          </li>
+        
+      </ul>
+    </div>
+  
+    <div class="cat-detail" style="border-left: 3px solid #d2a8ff">
+      <h2 style="color:#d2a8ff">의원경영</h2>
+      <p style="color:var(--text3);font-size:12px;margin-bottom:14px">8개 소분류 · 109개 태그</p>
+      <ul class="sub-list">
+        
+          <li class="sub-item">
+            <div class="sub-name">세미나/학술대회 <span class="sub-badge">19개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">세미나</span><span class="tag">워크숍</span><span class="tag">학술대회</span><span class="tag">연수교육</span><span class="tag">CME</span><span class="tag">라이브서저리</span><span class="tag">케이스발표</span><span class="tag">포스터발표</span><span class="tag">초청강연</span><span class="tag">해외학회</span><span class="tag">국내학회</span><span class="tag">IMCAS</span><span class="tag">AMWC</span><span class="tag">AACS</span><span class="tag">KSAS</span><span class="tag">대한피부과학회</span><span class="tag">대한의사협회</span><span class="tag">온라인세미나</span><span class="tag">웨비나</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">장비/재료수급 <span class="sub-badge">17개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">의료기기</span><span class="tag">신규장비</span><span class="tag">장비구매</span><span class="tag">장비리스</span><span class="tag">장비임대</span><span class="tag">소모품</span><span class="tag">재료비</span><span class="tag">도매상</span><span class="tag">공급업체</span><span class="tag">AS</span><span class="tag">유지보수</span><span class="tag">국산장비</span><span class="tag">수입장비</span><span class="tag">인허가</span><span class="tag">FDA승인</span><span class="tag">CE인증</span><span class="tag">KFDA</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">약품/도매 <span class="sub-badge">12개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">도매상</span><span class="tag">약품공급</span><span class="tag">마진</span><span class="tag">거래처</span><span class="tag">약품가격</span><span class="tag">공동구매</span><span class="tag">리베이트</span><span class="tag">할인</span><span class="tag">미용재료</span><span class="tag">보톡스단가</span><span class="tag">필러단가</span><span class="tag">실단가</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">제품정보/신제품 <span class="sub-badge">8개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">신제품출시</span><span class="tag">제품리뷰</span><span class="tag">비교분석</span><span class="tag">제품문의</span><span class="tag">사용후기</span><span class="tag">부작용보고</span><span class="tag">임상데이터</span><span class="tag">논문근거</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">의원운영 <span class="sub-badge">18개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">직원채용</span><span class="tag">간호사</span><span class="tag">코디네이터</span><span class="tag">원무</span><span class="tag">급여</span><span class="tag">노무</span><span class="tag">근로계약</span><span class="tag">직원교육</span><span class="tag">고객응대</span><span class="tag">컴플레인</span><span class="tag">환자관리</span><span class="tag">예약시스템</span><span class="tag">EMR</span><span class="tag">의무기록</span><span class="tag">청구</span><span class="tag">심사</span><span class="tag">삭감</span><span class="tag">이의신청</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">마케팅/홍보 <span class="sub-badge">14개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">네이버광고</span><span class="tag">카카오광고</span><span class="tag">SNS마케팅</span><span class="tag">인스타그램</span><span class="tag">유튜브채널</span><span class="tag">블로그</span><span class="tag">리뷰관리</span><span class="tag">강남언니</span><span class="tag">바비톡</span><span class="tag">성형앱</span><span class="tag">광고비</span><span class="tag">ROI</span><span class="tag">이벤트</span><span class="tag">패키지상품</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">법무/컴플라이언스 <span class="sub-badge">12개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">의료법위반</span><span class="tag">광고심의</span><span class="tag">개인정보보호</span><span class="tag">진료거부</span><span class="tag">의료사고</span><span class="tag">의료분쟁조정</span><span class="tag">손해배상</span><span class="tag">형사고소</span><span class="tag">민사소송</span><span class="tag">보험청구사기</span><span class="tag">감사원</span><span class="tag">세무조사</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">평점/리뷰 <span class="sub-badge">9개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">네이버지도평점</span><span class="tag">카카오맵평점</span><span class="tag">구글리뷰</span><span class="tag">앱리뷰</span><span class="tag">악성리뷰</span><span class="tag">리뷰삭제</span><span class="tag">환자만족도</span><span class="tag">NPS</span><span class="tag">재방문율</span></div>
+          </li>
+        
+      </ul>
+    </div>
+  
+    <div class="cat-detail" style="border-left: 3px solid #ff7b72">
+      <h2 style="color:#ff7b72">엔터테인먼트</h2>
+      <p style="color:var(--text3);font-size:12px;margin-bottom:14px">5개 소분류 · 62개 태그</p>
+      <ul class="sub-list">
+        
+          <li class="sub-item">
+            <div class="sub-name">동영상 <span class="sub-badge">14개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">유튜브</span><span class="tag">릴스</span><span class="tag">틱톡</span><span class="tag">쇼츠</span><span class="tag">넷플릭스</span><span class="tag">왓챠</span><span class="tag">웨이브</span><span class="tag">드라마</span><span class="tag">영화</span><span class="tag">다큐멘터리</span><span class="tag">예능</span><span class="tag">스포츠중계</span><span class="tag">라이브방송</span><span class="tag">하이라이트</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">음악 <span class="sub-badge">13개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">K팝</span><span class="tag">팝</span><span class="tag">클래식</span><span class="tag">재즈</span><span class="tag">힙합</span><span class="tag">인디</span><span class="tag">OST</span><span class="tag">플레이리스트</span><span class="tag">콘서트</span><span class="tag">페스티벌</span><span class="tag">유튜브뮤직</span><span class="tag">스포티파이</span><span class="tag">멜론</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">스포츠 <span class="sub-badge">13개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">야구</span><span class="tag">축구</span><span class="tag">농구</span><span class="tag">골프</span><span class="tag">테니스</span><span class="tag">수영</span><span class="tag">마라톤</span><span class="tag">KBO</span><span class="tag">EPL</span><span class="tag">MLB</span><span class="tag">NBA</span><span class="tag">국가대표</span><span class="tag">올림픽</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">여행 <span class="sub-badge">12개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">국내여행</span><span class="tag">해외여행</span><span class="tag">일본</span><span class="tag">유럽</span><span class="tag">미국</span><span class="tag">동남아</span><span class="tag">맛집</span><span class="tag">숙소</span><span class="tag">항공권</span><span class="tag">여행팁</span><span class="tag">골프여행</span><span class="tag">의사여행</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">음식/맛집 <span class="sub-badge">10개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">맛집추천</span><span class="tag">레스토랑</span><span class="tag">와인</span><span class="tag">위스키</span><span class="tag">사케</span><span class="tag">커피</span><span class="tag">카페</span><span class="tag">배달음식</span><span class="tag">요리</span><span class="tag">건강식</span></div>
+          </li>
+        
+      </ul>
+    </div>
+  
+    <div class="cat-detail" style="border-left: 3px solid #79c0ff">
+      <h2 style="color:#79c0ff">과학/기술</h2>
+      <p style="color:var(--text3);font-size:12px;margin-bottom:14px">4개 소분류 · 44개 태그</p>
+      <ul class="sub-list">
+        
+          <li class="sub-item">
+            <div class="sub-name">과학일반 <span class="sub-badge">14개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">논문</span><span class="tag">연구결과</span><span class="tag">임상시험</span><span class="tag">의학저널</span><span class="tag">네이처</span><span class="tag">사이언스</span><span class="tag">란셋</span><span class="tag">NEJM</span><span class="tag">JAMA</span><span class="tag">물리학</span><span class="tag">화학</span><span class="tag">생물학</span><span class="tag">천문학</span><span class="tag">환경과학</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">AI/인공지능 <span class="sub-badge">11개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">ChatGPT</span><span class="tag">Claude</span><span class="tag">Gemini</span><span class="tag">AI의료</span><span class="tag">AI진단</span><span class="tag">AI영상판독</span><span class="tag">AI챗봇</span><span class="tag">LLM</span><span class="tag">딥러닝</span><span class="tag">AI규제</span><span class="tag">AI윤리</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">디지털헬스 <span class="sub-badge">9개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">원격진료</span><span class="tag">비대면진료</span><span class="tag">디지털헬스케어</span><span class="tag">웨어러블</span><span class="tag">스마트워치</span><span class="tag">혈당모니터링</span><span class="tag">앱기반치료</span><span class="tag">PHR</span><span class="tag">EMR발전</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">가전/IT <span class="sub-badge">10개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">스마트폰</span><span class="tag">아이폰</span><span class="tag">갤럭시</span><span class="tag">노트북</span><span class="tag">애플워치</span><span class="tag">태블릿</span><span class="tag">카메라</span><span class="tag">드론</span><span class="tag">앱추천</span><span class="tag">소프트웨어</span></div>
+          </li>
+        
+      </ul>
+    </div>
+  
+    <div class="cat-detail" style="border-left: 3px solid #a5d6ff">
+      <h2 style="color:#a5d6ff">사회/이슈</h2>
+      <p style="color:var(--text3);font-size:12px;margin-bottom:14px">3개 소분류 · 34개 태그</p>
+      <ul class="sub-list">
+        
+          <li class="sub-item">
+            <div class="sub-name">범죄/사건사고 <span class="sub-badge">12개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">살인</span><span class="tag">강도</span><span class="tag">사기</span><span class="tag">의료사기</span><span class="tag">보험사기</span><span class="tag">음주운전</span><span class="tag">교통사고</span><span class="tag">화재</span><span class="tag">재난</span><span class="tag">자연재해</span><span class="tag">학교폭력</span><span class="tag">직장내괴롭힘</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">정치 <span class="sub-badge">12개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">대통령</span><span class="tag">국회</span><span class="tag">여당</span><span class="tag">야당</span><span class="tag">선거</span><span class="tag">정책</span><span class="tag">법안</span><span class="tag">의료정책</span><span class="tag">보건복지</span><span class="tag">국정감사</span><span class="tag">탄핵</span><span class="tag">개헌</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">복지/사회 <span class="sub-badge">10개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">저출생</span><span class="tag">고령화</span><span class="tag">연금</span><span class="tag">국민연금</span><span class="tag">건강보험</span><span class="tag">의료급여</span><span class="tag">복지정책</span><span class="tag">교육</span><span class="tag">주거</span><span class="tag">환경</span></div>
+          </li>
+        
+      </ul>
+    </div>
+  
+    <div class="cat-detail" style="border-left: 3px solid #ffa657">
+      <h2 style="color:#ffa657">파일/첨부</h2>
+      <p style="color:var(--text3);font-size:12px;margin-bottom:14px">4개 소분류 · 33개 태그</p>
+      <ul class="sub-list">
+        
+          <li class="sub-item">
+            <div class="sub-name">문서파일 <span class="sub-badge">11개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">PDF</span><span class="tag">PPT</span><span class="tag">PPTX</span><span class="tag">Word</span><span class="tag">HWP</span><span class="tag">Excel</span><span class="tag">가이드라인문서</span><span class="tag">논문파일</span><span class="tag">계약서</span><span class="tag">동의서</span><span class="tag">양식</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">이미지파일 <span class="sub-badge">9개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">JPG</span><span class="tag">PNG</span><span class="tag">사진공유</span><span class="tag">스크린샷</span><span class="tag">시술사진</span><span class="tag">비포애프터</span><span class="tag">사례사진</span><span class="tag">논문그림</span><span class="tag">인포그래픽</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">동영상파일 <span class="sub-badge">6개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">MP4</span><span class="tag">시술영상</span><span class="tag">강의영상</span><span class="tag">수술영상</span><span class="tag">라이브서저리녹화</span><span class="tag">교육영상</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">링크/URL <span class="sub-badge">7개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">뉴스링크</span><span class="tag">논문링크</span><span class="tag">유튜브링크</span><span class="tag">쇼핑링크</span><span class="tag">이벤트링크</span><span class="tag">공지링크</span><span class="tag">SNS링크</span></div>
+          </li>
+        
+      </ul>
+    </div>
+  
+    <div class="cat-detail" style="border-left: 3px solid #56d364">
+      <h2 style="color:#56d364">유머/일상</h2>
+      <p style="color:var(--text3);font-size:12px;margin-bottom:14px">3개 소분류 · 30개 태그</p>
+      <ul class="sub-list">
+        
+          <li class="sub-item">
+            <div class="sub-name">유머/밈 <span class="sub-badge">9개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">개그</span><span class="tag">밈</span><span class="tag">짤방</span><span class="tag">패러디</span><span class="tag">블랙코미디</span><span class="tag">의사유머</span><span class="tag">병원유머</span><span class="tag">직업유머</span><span class="tag">시사풍자</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">일상 <span class="sub-badge">13개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">날씨</span><span class="tag">인사</span><span class="tag">안부</span><span class="tag">생일축하</span><span class="tag">기념일</span><span class="tag">경조사</span><span class="tag">가족</span><span class="tag">자녀교육</span><span class="tag">육아</span><span class="tag">취미</span><span class="tag">독서</span><span class="tag">건강관리</span><span class="tag">운동</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">동기부여/철학 <span class="sub-badge">8개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">명언</span><span class="tag">자기계발</span><span class="tag">인생관</span><span class="tag">철학</span><span class="tag">종교</span><span class="tag">감사</span><span class="tag">위로</span><span class="tag">응원</span></div>
+          </li>
+        
+      </ul>
+    </div>
+  
+    <div class="cat-detail" style="border-left: 3px solid #b3b3b3">
+      <h2 style="color:#b3b3b3">기타</h2>
+      <p style="color:var(--text3);font-size:12px;margin-bottom:14px">2개 소분류 · 12개 태그</p>
+      <ul class="sub-list">
+        
+          <li class="sub-item">
+            <div class="sub-name">미분류 <span class="sub-badge">5개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">기타</span><span class="tag">분류불가</span><span class="tag">스팸</span><span class="tag">광고</span><span class="tag">단순공유</span></div>
+          </li>
+        
+          <li class="sub-item">
+            <div class="sub-name">그룹관리 <span class="sub-badge">7개 태그</span></div>
+            <div class="tag-cloud"><span class="tag">공지</span><span class="tag">투표</span><span class="tag">일정조율</span><span class="tag">모임안내</span><span class="tag">회비</span><span class="tag">단체주문</span><span class="tag">참석여부</span></div>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ── Data: embedded from categories.txt ──────────────────
+function getFallbackTaxonomy() {
+  return [
+    { id:'MEDIA_NEWS',       label:'미디어/뉴스',    color:'#58a6ff',
+      subs: [
+        { id:'DAILY_NEWSPAPER',  label:'일간지',       tags:['조선일보','중앙일보','동아일보','한겨레','경향신문','한국일보','국민일보','서울신문','세계일보','문화일보'] },
+        { id:'ECONOMIC_NEWSPAPER',label:'경제지',      tags:['한국경제','매일경제','머니투데이','이데일리','아시아경제','헤럴드경제','파이낸셜뉴스','서울경제','이코노미스트'] },
+        { id:'WEEKLY_MAGAZINE',  label:'주간지',       tags:['시사IN','주간조선','주간동아','주간경향','한겨레21','뉴스위크코리아','시사저널'] },
+        { id:'MONTHLY_MAGAZINE', label:'월간지',       tags:['신동아','월간조선','월간중앙','샘터','뿌리깊은나무'] },
+        { id:'BROADCAST_NEWS',   label:'방송뉴스',     tags:['KBS','MBC','SBS','JTBC','TV조선','채널A','MBN','YTN','연합뉴스TV'] },
+        { id:'ONLINE_NEWS',      label:'온라인뉴스/포털',tags:['네이버뉴스','다음뉴스','카카오뉴스','유튜브뉴스','뉴스레터','해외언론','BBC','CNN','NYT'] },
+      ]
+    },
+    { id:'ECONOMY_INVEST',   label:'경제/투자',     color:'#3fb950',
+      subs: [
+        { id:'MACRO_ECONOMY', label:'경제일반',  tags:['금리','환율','물가','인플레이션','GDP','무역','수출','수입','경기침체','재정정책','통화정책','한국은행','연준','달러','엔화','위안화'] },
+        { id:'STOCK_MARKET',  label:'주식',      tags:['코스피','코스닥','나스닥','NYSE','S&P500','개별종목','공매도','ETF','ELS','테마주','배당주','성장주','가치주','차트분석','기술적분석','기본분석','공시','실적','PER','PBR','ROE','외국인매매','기관매매'] },
+        { id:'REAL_ESTATE',   label:'부동산',    tags:['아파트','분양','재건축','재개발','청약','전세','월세','갭투자','경매','공시지가','취득세','양도세','임대사업자','토지','상가','오피스텔','빌딩','GTX','개발호재','규제','LTV','DSR','강남','서울','수도권','지방'] },
+        { id:'ALTERNATIVE_INVEST',label:'대체투자/기타',tags:['암호화폐','비트코인','이더리움','금','원자재','원유','채권','사모펀드','VC','스타트업투자','해외주식','미국주식','일본주식','중국주식'] },
+        { id:'TAX_FINANCE',   label:'세금/재무', tags:['종합소득세','양도소득세','법인세','절세','세무사','회계사','법인설립','금융소득','건강보험료','피부양자','절세전략','증여','상속'] },
+      ]
+    },
+    { id:'MEDICAL',          label:'의학/의료',     color:'#f0883e',
+      subs: [
+        { id:'MEDICAL_NEWS',    label:'의학뉴스/정책',  tags:['건강보험','급여','비급여','의료법','의정갈등','의사파업','전공의','의대정원','심평원','복지부','식약처','의료사고','판례','의료분쟁','의협','학회지침','가이드라인','임상시험','신약허가'] },
+        { id:'CLINICAL_MEDICINE',label:'임상의학',       tags:['내과','외과','피부과','가정의학과','신경과','정형외과','산부인과','소아과','안과','이비인후과','비뇨기과','정신건강의학과','진단검사','영상의학','병리','응급의학'] },
+        { id:'AESTHETICS_MEDICINE',label:'미용의학 (총괄)',tags:['미용시술','피부미용','안티에이징','체형관리','성형','비수술적시술','자연스러운결과','시술후관리'] },
+        { id:'BOTOX_FILLER',    label:'보톡스/필러',    tags:['보톡스','보툴리눔독소','앨러간','메디톡스','휴젤','대웅','이노톡스','코어톡스','나보타','주름개선','사각턱','종아리','팔자주름','히알루론산필러','레스틸렌','쥬비덤','테아솔','벨라스트','이브아르','볼루마','노화개선','코필러','입술필러','턱필러'] },
+        { id:'LASER',           label:'레이저/에너지장비', tags:['레이저','피코레이저','롱펄스','엔디야그','CO2레이저','어븀야그','IPL','RF','HIFU','울쎄라','슈링크','써마지','인모드','포텐자','피코웨이','피코슈어','스타워커','시네론','클라리티','아포지','아이콘','레이저토닝','색소치료','혈관치료','제모','여드름치료'] },
+        { id:'LIFTING',         label:'리프팅',         tags:['실리프팅','실','PDO실','PCL실','PLLA실','콘실','스피큘','노블실','민트리프트','해피리프트','울트라리프팅','V리프팅','조직리프팅','페이스리프팅','넥리프팅','안검하수','눈꺼풀리프팅'] },
+        { id:'PETIT_SURGERY',   label:'쁘띠성형',       tags:['쌍꺼풀','눈매교정','코필러','코수술','지방분해주사','윤곽주사','물광주사','엑소좀','줄기세포','태반주사','PRP','콜라겐주사','연어주사','MTS','더마롤러','마이크로니들링'] },
+        { id:'BODY_SLIMMING',   label:'체형/비만',      tags:['지방흡입','지방분해','울트라셀','쿨스컬프팅','벨라쉐이프','바디FX','비만치료','비만약','삭센다','위고비','마운자로','체중감량'] },
+        { id:'SKINCARE',        label:'피부관리',        tags:['보습','미백','여드름','흉터','모공','민감성','아토피','건선','색소침착','기미','잡티','홍조','주사','피부과학'] },
+        { id:'DRUGS',           label:'약품/처방',       tags:['전문의약품','일반의약품','항생제','항염증제','스테로이드','진통제','수면제','항우울제','마약류관리','처방전','DUR','약물상호작용','신약','제네릭','바이오시밀러'] },
+        { id:'CANCER_SCREENING',label:'암검진',          tags:['5대암검진','위암','대장암','간암','유방암','자궁경부암','국가암검진','내시경','조직검사','종양표지자','영상검사'] },
+      ]
+    },
+    { id:'CLINIC_MANAGEMENT',label:'의원경영',      color:'#d2a8ff',
+      subs: [
+        { id:'SEMINAR_CONFERENCE',label:'세미나/학술대회',tags:['세미나','워크숍','학술대회','연수교육','CME','라이브서저리','케이스발표','포스터발표','초청강연','해외학회','국내학회','IMCAS','AMWC','AACS','KSAS','대한피부과학회','대한의사협회','온라인세미나','웨비나'] },
+        { id:'EQUIPMENT_SUPPLY',label:'장비/재료수급',  tags:['의료기기','신규장비','장비구매','장비리스','장비임대','소모품','재료비','도매상','공급업체','AS','유지보수','국산장비','수입장비','인허가','FDA승인','CE인증','KFDA'] },
+        { id:'PHARMA_SUPPLY',   label:'약품/도매',       tags:['도매상','약품공급','마진','거래처','약품가격','공동구매','리베이트','할인','미용재료','보톡스단가','필러단가','실단가'] },
+        { id:'PRODUCT_INFO',  label:'제품정보/신제품', tags:['신제품출시','제품리뷰','비교분석','제품문의','사용후기','부작용보고','임상데이터','논문근거'] },
+        { id:'CLINIC_OPS',    label:'의원운영',        tags:['직원채용','간호사','코디네이터','원무','급여','노무','근로계약','직원교육','고객응대','컴플레인','환자관리','예약시스템','EMR','의무기록','청구','심사','삭감','이의신청'] },
+        { id:'MARKETING',     label:'마케팅/홍보',     tags:['네이버광고','카카오광고','SNS마케팅','인스타그램','유튜브채널','블로그','리뷰관리','강남언니','강남언니후기','바비톡','성형앱','광고비','ROI','이벤트','패키지상품'] },
+        { id:'LEGAL_COMPLIANCE',label:'법무/컴플라이언스',tags:['의료법위반','광고심의','개인정보보호','HIPAA','진료거부','의료사고','의료분쟁조정','손해배상','형사고소','민사소송','보험청구사기','감사원','세무조사'] },
+        { id:'RATING_REVIEW',   label:'평점/리뷰',       tags:['네이버지도평점','카카오맵평점','구글리뷰','앱리뷰','악성리뷰','리뷰삭제','환자만족도','NPS','재방문율'] },
+      ]
+    },
+    { id:'ENTERTAINMENT',    label:'엔터테인먼트/문화', color:'#ff7b72',
+      subs: [
+        { id:'VIDEO',    label:'동영상',   tags:['유튜브','릴스','틱톡','쇼츠','넷플릭스','왓챠','웨이브','드라마','영화','다큐멘터리','예능','스포츠중계','라이브방송','하이라이트'] },
+        { id:'MUSIC',    label:'음악',     tags:['K팝','팝','클래식','재즈','힙합','인디','OST','플레이리스트','콘서트','페스티벌','유튜브뮤직','스포티파이','멜론'] },
+        { id:'SPORTS',   label:'스포츠',   tags:['야구','축구','농구','골프','테니스','수영','마라톤','KBO','EPL','MLB','NBA','국가대표','올림픽'] },
+        { id:'TRAVEL',   label:'여행',     tags:['국내여행','해외여행','일본','유럽','미국','동남아','맛집','숙소','항공권','여행팁','골프여행','의사여행'] },
+        { id:'FOOD_DINING',label:'음식/맛집', tags:['맛집추천','레스토랑','와인','위스키','사케','커피','카페','배달음식','요리','건강식'] },
+      ]
+    },
+    { id:'SCIENCE_TECH',     label:'과학/기술',      color:'#79c0ff',
+      subs: [
+        { id:'SCIENCE',       label:'과학일반',    tags:['논문','연구결과','임상시험','의학저널','네이처','사이언스','란셋','NEJM','JAMA','물리학','화학','생물학','천문학','환경과학'] },
+        { id:'AI_TECH',       label:'AI/인공지능', tags:['ChatGPT','Claude','Gemini','AI의료','AI진단','AI영상판독','AI챗봇','LLM','딥러닝','AI규제','AI윤리'] },
+        { id:'DIGITAL_HEALTH',label:'디지털헬스',  tags:['원격진료','비대면진료','디지털헬스케어','웨어러블','스마트워치','혈당모니터링','앱기반치료','PHR','EMR발전'] },
+        { id:'GADGET_IT',     label:'가전/IT',     tags:['스마트폰','아이폰','갤럭시','노트북','애플워치','태블릿','카메라','드론','앱추천','소프트웨어'] },
+      ]
+    },
+    { id:'POLITICS_LEGAL',   label:'정치/정책/법조',  color:'#ff4a4a',
+      subs: [
+        { id:'GOVT_POLITICS',   label:'정치/정부',     tags:['대통령','윤석열','문재인','국회','국회의원','정부정책','정책','보건복지부','복지부','여당','야당','선거','총선','대선','지방선거','법안','국정감사','탄핵','개헌','행정명령','고시','시행령'] },
+        { id:'LEGAL_SYSTEM',    label:'사법/법조',     tags:['검찰','검찰청','법원판결','판결','판례','선고','대법원','헌법재판소','헌재','가처분','기각','인용','검사','판사','변호사','법률대리인','기소','구속','수사','조사','법원','송치','형사고소','민사소송'] },
+        { id:'MEDICAL_CONFLICT', label:'의정갈등/의료대란',tags:['의료대란','의료공백','의대증원','증원','전공의탄압','전공의복귀','복귀명령','업무개시명령','면허정지','면허취소','사직서','처벌','단속','벌금','의사파업','의정갈등','집단행동','총파업','수련병원','파업','고발','행정처분'] },
+      ]
+    },
+    { id:'SOCIAL_ISSUES',    label:'사회/이슈',      color:'#a5d6ff',
+      subs: [
+        { id:'CRIME_INCIDENT',label:'범죄/사건사고', tags:['살인','강도','사기','의료사기','보험사기','음주운전','교통사고','화재','재난','자연재해','학교폭력','직장내괴롭힘'] },
+        { id:'SOCIAL_WELFARE',label:'복지/사회',     tags:['저출생','고령화','연금','국민연금','건강보험','의료급여','복지정책','교육','주거','환경'] },
+      ]
+    },
+    { id:'FILE_ATTACHMENT',  label:'파일/첨부',      color:'#ffa657',
+      subs: [
+        { id:'DOCUMENT_FILE',label:'문서파일',   tags:['PDF','PPT','PPTX','Word','HWP','Excel','가이드라인문서','논문파일','계약서','동의서','양식'] },
+        { id:'IMAGE_FILE',  label:'이미지파일', tags:['JPG','PNG','사진공유','스크린샷','시술사진','비포애프터','사례사진','논문그림','인포그래픽'] },
+        { id:'VIDEO_FILE',  label:'동영상파일', tags:['MP4','시술영상','강의영상','수술영상','라이브서저리녹화','교육영상'] },
+        { id:'LINK_URL',    label:'링크/URL',   tags:['뉴스링크','논문링크','유튜브링크','쇼핑링크','이벤트링크','공지링크','SNS링크'] },
+      ]
+    },
+    { id:'HUMOR_DAILY',      label:'유머/일상',      color:'#56d364',
+      subs: [
+        { id:'HUMOR',      label:'유머/밈',      tags:['개그','밈','짤방','패러디','블랙코미디','의사유머','병원유머','직업유머','시사풍자'] },
+        { id:'DAILY_LIFE', label:'일상',          tags:['날씨','인사','안부','생일축하','기념일','경조사','가족','자녀교육','육아','취미','독서','건강관리','운동'] },
+        { id:'MOTIVATION', label:'동기부여/철학', tags:['명언','자기계발','인생관','철학','종교','감사','위로','응원'] },
+      ]
+    },
+    { id:'ETC',              label:'기타',           color:'#b3b3b3',
+      subs: [
+        { id:'UNCLASSIFIED',  label:'미분류',    tags:['기타','분류불가','스팸','광고','단순공유'] },
+        { id:'GROUP_ADMIN',   label:'그룹관리',  tags:['공지','투표','일정조율','모임안내','회비','단체주문','참석여부'] },
+      ]
+    },
+  ];
+}
+
+let TAXONOMY = getFallbackTaxonomy();
+
+function parseTaxonomyText(text) {
+  const lines = text.split(/\r?\n/);
+  const taxonomy = [];
+  let currentCategory = null;
+  let currentSubcategory = null;
+
+  const CATEGORY_COLORS = {
+    'MEDIA_NEWS': '#58a6ff',
+    'ECONOMY_INVEST': '#3fb950',
+    'MEDICAL': '#f0883e',
+    'CLINIC_MANAGEMENT': '#d2a8ff',
+    'CLINIC_MGMT': '#d2a8ff',
+    'ENTERTAINMENT': '#ff7b72',
+    'SCIENCE_TECH': '#79c0ff',
+    'POLITICS_LEGAL': '#ff4a4a',
+    'SOCIAL_ISSUES': '#a5d6ff',
+    'FILE_ATTACHMENT': '#ffa657',
+    'HUMOR_DAILY': '#56d364',
+    'ETC': '#b3b3b3'
+  };
+
+  const FALLBACK_PALETTE = [
+    '#f43f5e', '#ec4899', '#d946ef', '#a855f7', '#6366f1', 
+    '#3b82f6', '#0ea5e9', '#06b6d4', '#14b8a6', '#10b981', 
+    '#22c55e', '#84cc16', '#eab308', '#f97316'
+  ];
+  let colorIndex = 0;
+
+  for (let line of lines) {
+    line = line.trim();
+    if (!line || line.startsWith('#')) continue;
+
+    if (line.startsWith('CATEGORY:')) {
+      const content = line.substring(9).trim();
+      const parts = content.split('|');
+      const id = parts[0].trim();
+      const label = parts[1] ? parts[1].trim() : id;
+      const color = CATEGORY_COLORS[id] || FALLBACK_PALETTE[colorIndex++ % FALLBACK_PALETTE.length];
+      
+      currentCategory = { id, label, color, subs: [] };
+      taxonomy.push(currentCategory);
+      currentSubcategory = null;
+    } else if (line.startsWith('SUBCATEGORY:')) {
+      if (!currentCategory) continue;
+      const content = line.substring(12).trim();
+      const parts = content.split('|');
+      const id = parts[0].trim();
+      const label = parts[1] ? parts[1].trim() : id;
+      
+      currentSubcategory = { id, label, tags: [] };
+      currentCategory.subs.push(currentSubcategory);
+    } else if (line.startsWith('TAGS:')) {
+      if (!currentSubcategory) continue;
+      const tags = line.substring(5).split(',').map(t => t.trim()).filter(Boolean);
+      currentSubcategory.tags.push(...tags);
+    }
+  }
+
+  return taxonomy;
+}
+
+async function loadTaxonomy() {
+  try {
+    const response = await fetch('categories.txt');
+    if (!response.ok) throw new Error('Failed to fetch categories.txt');
+    const text = await response.text();
+    TAXONOMY = parseTaxonomyText(text);
+    console.log('Successfully loaded dynamic taxonomy from categories.txt:', TAXONOMY);
+    
+    const verEl = document.getElementById('lastUpdated');
+    if (verEl) {
+      const match = text.match(/버전:\s*(\S+)/) || text.match(/v\d+\.\d+/);
+      const version = match ? match[1] || match[0] : 'v1.0';
+      verEl.textContent = `categories.txt ${version} · 태그 약 ${TAXONOMY.reduce((a,c)=>a+c.subs.reduce((s,su)=>s+su.tags.length,0),0)}개`;
+    }
+  } catch (e) {
+    console.warn('Could not load categories.txt, using fallback static taxonomy.', e);
+    TAXONOMY = getFallbackTaxonomy();
+  }
+}
+
+// ── State ──────────────────────────────────────────────
+let state = {
+  activeCat: 'ALL',
+  messages: [],
+  categorized: {},
+  tagCounts: {},
+  yearData: {},
+};
+
+// ── Init ────────────────────────────────────────────────
+async function init() {
+  await loadTaxonomy();
+  buildSidebar();
+  buildTaxonomyView();
+  buildCatDetail();
+  loadDemoData(true);
+}
+
+function buildSidebar() {
+  const list = document.getElementById('catNavList');
+  list.innerHTML = '';
+  TAXONOMY.forEach(cat => {
+    const btn = document.createElement('button');
+    btn.className = 'cat-btn';
+    btn.id = 'btn-' + cat.id;
+    btn.innerHTML = `<span class="cat-dot" style="background:${cat.color}"></span>${cat.label}<span class="cat-count" id="cnt-${cat.id}">–</span>`;
+    btn.onclick = () => filterCat(cat.id);
+    list.appendChild(btn);
+  });
+}
+
+function buildTaxonomyView() {
+  const area = document.getElementById('taxonomyView');
+  area.innerHTML = TAXONOMY.map(cat => `
+    <div class="cat-detail" style="border-left: 3px solid ${cat.color}">
+      <h2 style="color:${cat.color}">${cat.label}</h2>
+      <p style="color:var(--text3);font-size:12px;margin-bottom:14px">${cat.subs.length}개 소분류 · ${cat.subs.reduce((a,s)=>a+s.tags.length,0)}개 태그</p>
+      <ul class="sub-list">
+        ${cat.subs.map(sub => `
+          <li class="sub-item">
+            <div class="sub-name">${sub.label} <span class="sub-badge">${sub.tags.length}개 태그</span></div>
+            <div class="tag-cloud">${sub.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+          </li>
+        `).join('')}
+      </ul>
+    </div>
+  `).join('');
+}
+
+function buildCatDetail() {
+  const area = document.getElementById('catDetailArea');
+  area.innerHTML = TAXONOMY.map(cat => `
+    <div class="cat-detail" style="border-left: 3px solid ${cat.color}">
+      <h2 style="color:${cat.color}">${cat.label}</h2>
+      <div style="color:var(--text3);font-size:12px;margin-bottom:4px">${cat.id}</div>
+      <div id="catstat-${cat.id}" style="font-size:13px;color:var(--text2);margin-bottom:14px">메시지 수: –</div>
+      <ul class="sub-list">
+        ${cat.subs.map(sub => `
+          <li class="sub-item">
+            <div class="sub-name">${sub.label} <span class="sub-badge" id="substat-${sub.id}">0건</span></div>
+            <div class="tag-cloud">${sub.tags.map(t=>`<span class="tag" id="tag-${t}" onclick="filterTag('${t}')">${t}<span class="cnt" id="tcnt-${t}">0</span></span>`).join('')}</div>
+          </li>
+        `).join('')}
+      </ul>
+    </div>
+  `).join('');
+}
+
+// ── Classify ──────────────────────────────────────────
+function classifyMessage(text) {
+  const lower = text.toLowerCase();
+  let bestCat = 'ETC', bestSub = 'UNCLASSIFIED', bestScore = 0;
+
+  for (const cat of TAXONOMY) {
+    for (const sub of cat.subs) {
+      let score = 0;
+      for (const tag of sub.tags) {
+        if (lower.includes(tag.toLowerCase())) score++;
+      }
+      if (score > bestScore) {
+        bestScore = score;
+        bestCat = cat.id;
+        bestSub = sub.id;
+      }
+    }
+  }
+  return { cat: bestCat, sub: bestSub, score: bestScore };
+}
+
+function analyzeText(text) {
+  const raw = text || document.getElementById('chatInput').value;
+  if (!raw.trim()) return;
+
+  const lines = raw.split('\n').filter(l => l.trim().length > 5);
+
+  state.messages = lines;
+  state.categorized = {};
+  state.tagCounts = {};
+  state.yearData = {};
+
+  // init
+  TAXONOMY.forEach(cat => {
+    state.categorized[cat.id] = { count: 0, subs: {} };
+    cat.subs.forEach(sub => { state.categorized[cat.id].subs[sub.id] = 0; });
+  });
+
+  // Pre-lower tags in TAXONOMY once to avoid repeated toLowerCase() calls
+  const preparedTaxonomy = TAXONOMY.map(cat => ({
+    id: cat.id,
+    subs: cat.subs.map(sub => ({
+      id: sub.id,
+      tags: sub.tags,
+      lowerTags: sub.tags.map(t => t.toLowerCase())
+    }))
+  }));
+
+  lines.forEach(line => {
+    // extract year
+    const yearMatch = line.match(/20(\d\d)/);
+    const year = yearMatch ? '20' + yearMatch[1] : '미상';
+
+    const lower = line.toLowerCase();
+    let bestCat = 'ETC';
+    let bestSub = 'UNCLASSIFIED';
+    let bestScore = 0;
+
+    // Single pass classification and tag counting
+    for (let i = 0; i < preparedTaxonomy.length; i++) {
+      const cat = preparedTaxonomy[i];
+      for (let j = 0; j < cat.subs.length; j++) {
+        const sub = cat.subs[j];
+        let subScore = 0;
+        for (let k = 0; k < sub.lowerTags.length; k++) {
+          const tagLower = sub.lowerTags[k];
+          if (lower.includes(tagLower)) {
+            subScore++;
+            const tagVal = sub.tags[k];
+            state.tagCounts[tagVal] = (state.tagCounts[tagVal] || 0) + 1;
+          }
+        }
+        if (subScore > bestScore) {
+          bestScore = subScore;
+          bestCat = cat.id;
+          bestSub = sub.id;
+        }
+      }
+    }
+
+    state.categorized[bestCat].count++;
+    if (state.categorized[bestCat].subs[bestSub] !== undefined) {
+      state.categorized[bestCat].subs[bestSub]++;
+    }
+
+    // year data
+    if (!state.yearData[year]) state.yearData[year] = {};
+    state.yearData[year][bestCat] = (state.yearData[year][bestCat] || 0) + 1;
+  });
+
+  updateUI();
+  showTab('overview');
+}
+
+function updateUI() {
+  const total = state.messages.length;
+  document.getElementById('statTotal').textContent = total.toLocaleString();
+
+  // sidebar counts
+  document.getElementById('cnt-ALL').textContent = total;
+  TAXONOMY.forEach(cat => {
+    const cnt = state.categorized[cat.id]?.count || 0;
+    const el = document.getElementById('cnt-' + cat.id);
+    if (el) el.textContent = cnt;
+
+    const stat = document.getElementById('catstat-' + cat.id);
+    if (stat) stat.textContent = `메시지 수: ${cnt}건 (${total ? Math.round(cnt/total*100) : 0}%)`;
+
+    cat.subs.forEach(sub => {
+      const sc = state.categorized[cat.id]?.subs[sub.id] || 0;
+      const el2 = document.getElementById('substat-' + sub.id);
+      if (el2) el2.textContent = sc + '건';
+    });
+  });
+
+  // tag counts
+  Object.entries(state.tagCounts).forEach(([tag, cnt]) => {
+    const el = document.getElementById('tcnt-' + tag);
+    if (el) el.textContent = cnt;
+  });
+
+  drawDonut();
+  drawBar();
+  drawTimeline();
+  buildTagCloud();
+}
+
+// ── Charts ─────────────────────────────────────────────
+function drawDonut() {
+  const canvas = document.getElementById('donutCanvas');
+  const ctx = canvas.getContext('2d');
+  const total = TAXONOMY.reduce((a, cat) => a + (state.categorized[cat.id]?.count || 0), 0) || 1;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const cx = 100, cy = 100, r = 85, ir = 52;
+  let start = -Math.PI / 2;
+
+  const legend = document.getElementById('donutLegend');
+  legend.innerHTML = '';
+
+  TAXONOMY.forEach(cat => {
+    const cnt = state.categorized[cat.id]?.count || 0;
+    const angle = (cnt / total) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, start, start + angle);
+    ctx.closePath();
+    ctx.fillStyle = cat.color;
+    ctx.fill();
+    start += angle;
+
+    const pct = total > 1 ? Math.round(cnt / total * 100) : 0;
+    legend.innerHTML += `<div class="legend-item"><span class="legend-dot" style="background:${cat.color}"></span><span style="color:var(--text2)">${cat.label}</span><span style="margin-left:auto;color:var(--text3)">${pct}%</span></div>`;
+  });
+
+  // inner hole
+  ctx.beginPath();
+  ctx.arc(cx, cy, ir, 0, Math.PI * 2);
+  ctx.fillStyle = '#161b22';
+  ctx.fill();
+
+  ctx.fillStyle = '#e6edf3';
+  ctx.font = 'bold 16px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(total.toLocaleString(), cx, cy + 4);
+  ctx.fillStyle = '#8b949e';
+  ctx.font = '10px sans-serif';
+  ctx.fillText('건', cx, cy + 18);
+}
+
+function drawBar() {
+  const canvas = document.getElementById('barCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const data = TAXONOMY.map(cat => ({ label: cat.label.slice(0,4), value: state.categorized[cat.id]?.count || 0, color: cat.color }));
+  const max = Math.max(...data.map(d => d.value), 1);
+
+  const pad = { top: 10, bottom: 36, left: 8, right: 8 };
+  const bw = (W - pad.left - pad.right) / data.length;
+
+  data.forEach((d, i) => {
+    const bh = ((H - pad.top - pad.bottom) * d.value / max);
+    const x = pad.left + i * bw + bw * 0.15;
+    const y = H - pad.bottom - bh;
+    ctx.fillStyle = d.color;
+    ctx.beginPath();
+    ctx.roundRect(x, y, bw * 0.7, bh, 3);
+    ctx.fill();
+
+    ctx.fillStyle = '#8b949e';
+    ctx.font = '9px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(d.label, x + bw * 0.35, H - pad.bottom + 12);
+    if (d.value > 0) {
+      ctx.fillStyle = '#e6edf3';
+      ctx.font = '9px sans-serif';
+      ctx.fillText(d.value, x + bw * 0.35, y - 4);
+    }
+  });
+}
+
+function drawTimeline() {
+  const canvas = document.getElementById('timelineCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width = canvas.parentElement.clientWidth - 40;
+  const H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const years = Object.keys(state.yearData).filter(y => y !== '미상').sort();
+  if (years.length < 2) {
+    // Use demo years
+    ctx.fillStyle = '#6e7681';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('데이터를 입력하면 연도별 추이가 표시됩니다', W/2, H/2);
+    return;
+  }
+
+  const pad = { top: 20, bottom: 28, left: 40, right: 20 };
+  const plotW = W - pad.left - pad.right;
+  const plotH = H - pad.top - pad.bottom;
+
+  // find max
+  let maxVal = 1;
+  years.forEach(y => Object.values(state.yearData[y]).forEach(v => { if (v > maxVal) maxVal = v; }));
+
+  // draw top-5 categories as lines
+  const topCats = TAXONOMY.slice(0,5);
+  topCats.forEach(cat => {
+    const pts = years.map((y, i) => ({
+      x: pad.left + i * plotW / (years.length - 1),
+      y: pad.top + plotH - plotH * (state.yearData[y]?.[cat.id] || 0) / maxVal
+    }));
+
+    ctx.beginPath();
+    ctx.strokeStyle = cat.color;
+    ctx.lineWidth = 2;
+    pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+    ctx.stroke();
+
+    pts.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+      ctx.fillStyle = cat.color;
+      ctx.fill();
+    });
+  });
+
+  // X axis labels
+  ctx.fillStyle = '#6e7681';
+  ctx.font = '10px sans-serif';
+  ctx.textAlign = 'center';
+  years.forEach((y, i) => {
+    const x = pad.left + i * plotW / (years.length - 1);
+    ctx.fillText(y, x, H - 6);
+  });
+}
+
+function buildTagCloud() {
+  const cloud = document.getElementById('tagCloud');
+  const sorted = Object.entries(state.tagCounts).sort((a, b) => b[1] - a[1]).slice(0, 80);
+  const max = sorted[0]?.[1] || 1;
+
+  cloud.innerHTML = sorted.map(([tag, cnt]) => {
+    const size = 11 + Math.floor(8 * cnt / max);
+    const opacity = 0.5 + 0.5 * cnt / max;
+    return `<span class="tag" style="font-size:${size}px;opacity:${opacity}" onclick="filterTag('${tag}')">${tag}<span class="cnt">${cnt}</span></span>`;
+  }).join('');
+}
+
+// ── Interactions ────────────────────────────────────────
+function filterCat(catId) {
+  state.activeCat = catId;
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-' + catId)?.classList.add('active');
+
+  const title = catId === 'ALL' ? '태그 클라우드 (전체)' : '태그 클라우드 · ' + (TAXONOMY.find(c=>c.id===catId)?.label || catId);
+  document.getElementById('tagCloudTitle').textContent = title;
+
+  if (catId === 'ALL') {
+    buildTagCloud();
+    return;
+  }
+
+  // filter cloud to this category
+  const cat = TAXONOMY.find(c => c.id === catId);
+  if (!cat) return;
+  const allTags = cat.subs.flatMap(s => s.tags);
+  const cloud = document.getElementById('tagCloud');
+  const sorted = allTags.map(t => [t, state.tagCounts[t] || 0]).sort((a,b)=>b[1]-a[1]);
+  cloud.innerHTML = sorted.map(([tag, cnt]) => {
+    const size = 11 + Math.floor(8 * (cnt / (Math.max(...sorted.map(s=>s[1]), 1))));
+    return `<span class="tag" style="font-size:${size}px" onclick="filterTag('${tag}')">${tag}<span class="cnt">${cnt}</span></span>`;
+  }).join('');
+}
+
+function filterTag(tag) {
+  alert(`"${tag}" 태그 필터 기능은 실제 채팅 데이터 입력 후 활성화됩니다.`);
+}
+
+function showTab(tabId) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + tabId)?.classList.add('active');
+  document.querySelectorAll('.tab').forEach(t => { if (t.textContent.includes({overview:'개요',categories:'카테고리',input:'입력',taxonomy:'분류'}[tabId])) t.classList.add('active'); });
+}
+
+// ── File upload ─────────────────────────────────────────
+document.getElementById('uploadZone').onclick = () => document.getElementById('fileInput').click();
+document.getElementById('fileInput').onchange = e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => { document.getElementById('chatInput').value = ev.target.result; analyzeText(ev.target.result); };
+  reader.readAsText(file, 'UTF-8');
+};
+
+const zone = document.getElementById('uploadZone');
+zone.ondragover = e => { e.preventDefault(); zone.classList.add('dragover'); };
+zone.ondragleave = () => zone.classList.remove('dragover');
+zone.ondrop = e => {
+  e.preventDefault(); zone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) { const r = new FileReader(); r.onload = ev => { document.getElementById('chatInput').value = ev.target.result; analyzeText(ev.target.result); }; r.readAsText(file,'UTF-8'); }
+};
+
+// ── Demo data ────────────────────────────────────────────
+function loadDemoData(silent) {
+  const demo = `[2019.02.11 오전 9:05] 강의원: 나보타 오늘 세미나 가시나요? 보톡스 케이스 발표도 있다던데
+[2019.03.22 오후 2:14] 이원장: 코스피 많이 빠졌네요. ETF 추가매수 고민중
+[2019.05.07 오전 11:22] 박원장: 레스틸렌 공동구매 같이 하실 분? 도매상에서 단가 맞춰봤어요
+[2019.07.18 오후 3:45] 최의원: NEJM에 흥미로운 논문 나왔어요 당뇨 신약 관련
+[2019.09.03 오전 8:55] 정원장: 매일경제 보셨어요? 금리 또 언급됐네요
+[2020.01.14 오후 5:12] 강의원: 코로나 뉴스 계속 나오네요. 의대정원 관련 의협 성명도 나왔고
+[2020.03.28 오전 10:44] 이원장: 비대면진료 한시적 허용 됐네요. 원격진료 시스템 알아보는중
+[2020.05.15 오후 1:23] 박원장: 넷플릭스 킹덤 보셨어요? 요즘 드라마 퀄리티 좋더라고요
+[2020.07.09 오전 9:15] 최의원: 울쎄라 새 핸드피스 나왔어요. 비교해보니 슈링크랑 결과 비슷
+[2020.09.21 오후 4:33] 정원장: 아파트 청약 결과 나왔어요. 강남 재건축 분위기 심상치 않음
+[2021.01.05 오전 8:30] 강의원: 위고비 국내 출시 언제쯤 될까요? 비만치료 문의가 많아요
+[2021.03.17 오후 2:10] 이원장: ChatGPT 써보셨어요? AI의료 관련 진단보조 가능성 있어보임
+[2021.05.28 오전 11:45] 박원장: 리프팅 실 PDO vs PCL 요즘 어디서 많이 구매하세요
+[2021.07.14 오후 3:22] 최의원: KBO 오늘 경기 보셨어요? 야구 진짜 명승부였네
+[2021.09.06 오전 9:40] 정원장: 네이버광고 효율이 좀 떨어지네요. SNS마케팅 전략 바꿔볼까
+[2022.01.18 오후 1:15] 강의원: 의료사고 판례 공유합니다 PDF파일 첨부
+[2022.03.25 오전 10:20] 이원장: 코스닥 테마주 장난 아니네요. 개별종목 공시 확인하세요
+[2022.05.10 오후 4:50] 박원장: 피코레이저 색소치료 케이스 사진 공유해요 JPG
+[2022.07.23 오전 9:05] 최의원: 일본여행 오사카 맛집 추천 받아요 사케 좋은곳도
+[2022.09.14 오후 2:35] 정원장: 의원운영 EMR 시스템 바꾸려는데 추천해주실만한거 있나요
+[2023.01.07 오전 8:45] 강의원: 비트코인 다시 오르네요. 암호화폐 언제 매도하셨어요
+[2023.03.19 오후 5:20] 이원장: 전공의 파업 관련 의협 입장 어떻게 보세요. 의대정원 문제
+[2023.05.31 오전 11:10] 박원장: 삭센다 마운자로 비교 케이스 공유드려요. 체중감량 결과 좋더라고요
+[2023.07.12 오후 3:00] 최의원: 구글리뷰 악성리뷰 어떻게 대응하세요? 법적 조치 고민중
+[2023.09.25 오전 9:55] 정원장: IMCAS 파리 세미나 참석하실 분 계세요? 필러 라이브서저리 있어요
+[2024.01.16 오후 1:40] 강의원: 종합소득세 신고 세무사 바꿨어요. 절세전략 새로 짰고요
+[2024.03.04 오전 10:15] 이원장: 인모드 포텐자 비교해보니 RF 에너지 결과 차이가
+[2024.05.19 오후 4:10] 박원장: 개그 모음 영상 공유 요즘 이게 제일 웃기네 ㅋㅋ
+[2024.07.30 오전 9:30] 최의원: 국민연금 고령화 대책 뉴스 봤어요? 저출생 문제 심각하네
+[2024.09.11 오후 2:45] 정원장: 앨러간 보톡스 vs 메디톡스 가격 비교 공동구매 같이해요
+[2025.01.08 오전 8:20] 강의원: 달러환율 또 올랐네요 미국주식 환차익 봤어요
+[2025.03.22 오후 5:30] 이원장: AI챗봇 Claude 써보셨어요? 진료 보조에 활용가능할듯
+[2025.05.14 오전 11:35] 박원장: 엑소좀 줄기세포 미용 시술 후기 공유드려요 비포애프터
+[2025.07.26 오후 3:15] 최의원: 강남언니 앱리뷰 관리 어떻게 하세요? 악성리뷰 대응
+[2025.09.03 오전 9:10] 정원장: 선거 정책 의료정책 보셨어요? 비급여 관리 강화될듯
+[2026.01.14 오후 1:20] 강의원: GTX 개발호재 지역 부동산 어떻게 보세요? 재건축 투자고민
+[2026.03.27 오전 10:45] 이원장: 위고비 삭센다 처방 건보 급여 언제 되나요 비만치료
+[2026.05.19 오후 4:00] 박원장: 5대암검진 위암 대장암 내시경 장비 교체 고민이에요
+[2026.06.10 오전 9:22] 최의원: 새벽에 빌딩 경매 낙찰받았어요 상가 수익률 계산해보니`;
+
+  document.getElementById('chatInput').value = demo;
+  analyzeText(demo);
+}
+
+// init on load
+window.onload = init;
+</script>
+
+
+</body></html>
