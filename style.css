@@ -2580,6 +2580,197 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
     overflow-wrap: anywhere !important;
   }
 
+  /* == Container & Card Padding Fixes == */
+  .app-container {
+    padding: 16px 12px !important;
+  }
+
+  .control-panel {
+    padding: 16px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .control-card {
+    padding: 12px !important;
+    gap: 12px !important;
+  }
+
+  /* == Header Layout Fixes == */
+  .app-header {
+    flex-direction: column !important;
+    gap: 16px !important;
+    align-items: center !important;
+    text-align: center !important;
+    padding-bottom: 20px !important;
+  }
+
+  .logo-area {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .bible-verse-container {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 8px 0 !important;
+  }
+
+  .header-right-controls {
+    flex-direction: column !important;
+    gap: 12px !important;
+    width: 100% !important;
+    align-items: center !important;
+  }
+
+  .music-player {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  /* == Control Inputs & Dropdowns Fixes == */
+  .cond-item {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 6px !important;
+  }
+
+  .cond-item label {
+    margin-bottom: 2px !important;
+  }
+
+  .date-input-wrap, 
+  .select-box,
+  .input-date {
+    width: 100% !important;
+  }
+
+  .condition-flex-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+
+  .btn-emoji-toggle {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .file-info-inline {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    padding: 8px 10px !important;
+  }
+
+  .file-meta {
+    min-width: 0 !important; /* Fix flex overflow bug */
+  }
+
+  /* == Tab Buttons & Search Bar Fixes == */
+  .tabs-header-bar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+
+  .tabs-buttons {
+    width: 100% !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 4px !important;
+  }
+
+  .tab-btn {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    flex-grow: 1 !important;
+    justify-content: center !important;
+    font-size: 12px !important;
+    padding: 8px 12px !important;
+  }
+
+  .tabs-search-wrap,
+  .search-box,
+  .search-box input {
+    width: 100% !important;
+  }
+
+  .search-box input:focus {
+    width: 100% !important;
+  }
+
+  /* == Bottom Summary & Interaction Controls Fixes == */
+  .bottom-summary-actions {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 16px !important;
+  }
+
+  .summary-info-bar {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px 16px !important;
+    width: 100% !important;
+  }
+
+  .interaction-controls {
+    width: 100% !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+
+  .interaction-controls .btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  /* == Explorer Modal Padding == */
+  .modal-content {
+    padding: 16px !important;
+  }
+
+  /* == Ghost Finder Modal Mobile Fixes == */
+  #ghost-finder-modal .date-range-inputs {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+
+  #ghost-finder-modal .date-range-inputs > div {
+    width: 100% !important;
+    flex: none !important;
+  }
+
+  #ghost-finder-modal #btn-search-ghosts {
+    width: 100% !important;
+    justify-content: center !important;
+    height: 40px !important;
+  }
+
+  #ghost-finder-modal .table-wrapper {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  #ghost-finder-modal .data-table {
+    min-width: 520px !important;
+    table-layout: auto !important;
+  }
+
+  /* == Other Modals Table Scroll Fixes == */
+  #users-modal .table-wrapper,
+  #filtered-users-modal .table-wrapper {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  #users-modal .data-table,
+  #filtered-users-modal .data-table {
+    min-width: 500px !important;
+    table-layout: auto !important;
+  }
+
   /* == Users Table → Card Layout == */
   #users-table {
     table-layout: auto !important;
