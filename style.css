@@ -449,7 +449,19 @@ h1, h2, h3, h4 {
   outline: none;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
-  overflow: hidden;
+  overflow: visible;
+}
+
+.ghost-date-input {
+  background: rgba(79, 172, 254, 0.15) !important;
+  border: 1px solid rgba(79, 172, 254, 0.5) !important;
+  box-shadow: 0 0 8px rgba(79, 172, 254, 0.25) !important;
+  padding: 8px 12px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  min-width: 0 !important;
+  display: block !important;
+  overflow: visible !important;
 }
 
 /* Custom Calendar Picker Icon Style */
