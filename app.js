@@ -4682,6 +4682,18 @@ function initGhostFinder() {
       ghostEndDateInput.value = formatInputDate(totalStats.endDate);
     }
     
+    // Reset ghost finder display elements to default state
+    currentFoundGhosts = [];
+    ghostFinderCount.innerText = '0';
+    ghostResultsBody.innerHTML = '';
+    const emptyStateEl = document.getElementById('ghost-finder-empty');
+    const emptyStateText = document.getElementById('ghost-finder-empty-text');
+    const tableWrapperEl = document.getElementById('ghost-finder-table-wrapper');
+    if (emptyStateText) emptyStateText.innerText = '유령 기준 날짜를 설정하고 검색해 주세요.';
+    if (emptyStateEl) emptyStateEl.style.display = 'block';
+    if (tableWrapperEl) tableWrapperEl.style.display = 'none';
+    btnPurgeGhosts.setAttribute('disabled', 'true');
+    
     ghostFinderModal.style.display = 'flex';
     updatePurgedSection();
   });
@@ -4755,18 +4767,22 @@ function initGhostFinder() {
     ghostFinderCount.innerText = currentFoundGhosts.length;
     ghostResultsBody.innerHTML = '';
 
+    const emptyStateEl = document.getElementById('ghost-finder-empty');
+    const emptyStateText = document.getElementById('ghost-finder-empty-text');
+    const tableWrapperEl = document.getElementById('ghost-finder-table-wrapper');
+
     if (currentFoundGhosts.length === 0) {
-      ghostResultsBody.innerHTML = `
-        <tr>
-          <td colspan="5" class="empty-row" style="text-align: center; color: var(--text-muted); padding: 30px 0;">
-            설정한 기간 동안 발굴된 Ghost of Ghost 유령 회원이 없습니다.
-          </td>
-        </tr>
-      `;
+      if (emptyStateText) emptyStateText.innerText = '설정한 기간 동안 발굴된 Ghost of Ghost 유령 회원이 없습니다.';
+      if (emptyStateEl) emptyStateEl.style.display = 'block';
+      if (tableWrapperEl) tableWrapperEl.style.display = 'none';
       btnPurgeGhosts.setAttribute('disabled', 'true');
     } else {
+      if (emptyStateEl) emptyStateEl.style.display = 'none';
+      if (tableWrapperEl) tableWrapperEl.style.display = 'block';
+      
       currentFoundGhosts.forEach(g => {
         const tr = document.createElement('tr');
+        tr.classList.add('fade-in-row');
         const joinDate = g.absoluteJoinDate || g.absoluteFirstTalkDate || '기록 없음';
         tr.innerHTML = `
           <td><strong>${escapeHtml(g.nickname)}</strong></td>
@@ -4792,13 +4808,10 @@ function initGhostFinder() {
       
       currentFoundGhosts = [];
       ghostFinderCount.innerText = '0';
-      ghostResultsBody.innerHTML = `
-        <tr>
-          <td colspan="5" class="empty-row" style="text-align: center; color: var(--text-muted); padding: 30px 0;">
-            유령 회원이 성공적으로 제거되었습니다. 대시보드를 갱신합니다.
-          </td>
-        </tr>
-      `;
+      ghostResultsBody.innerHTML = '';
+      if (emptyStateText) emptyStateText.innerText = '유령 회원이 성공적으로 제거되었습니다. 대시보드를 갱신합니다.';
+      if (emptyStateEl) emptyStateEl.style.display = 'block';
+      if (tableWrapperEl) tableWrapperEl.style.display = 'none';
       btnPurgeGhosts.setAttribute('disabled', 'true');
       
       updatePurgedSection();

@@ -673,9 +673,12 @@
   <!-- Ghost Finder Modal -->
   <div id="ghost-finder-modal" class="modal-overlay" style="display: none;">
     <div class="modal-content glass" style="max-width: 600px;">
-      <div class="modal-header">
-        <h2><i class="fa-solid fa-ghost"></i> Ghost Finder (유령 회원을 찾아 제거하기)</h2>
-        <button class="btn-close-modal" id="btn-close-ghost-modal"><i class="fa-solid fa-xmark"></i></button>
+      <div class="modal-header" style="flex-direction: column; text-align: center; position: relative; padding-top: 10px; width: 100%;">
+        <h2 style="font-size: 20px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center;">
+          <span style="display: flex; align-items: center; gap: 8px; justify-content: center;"><i class="fa-solid fa-ghost"></i> Ghost Finder</span>
+          <span style="font-size: 13px; font-weight: 500; color: var(--text-muted);">(유령 회원을 찾아 제거하기)</span>
+        </h2>
+        <button class="btn-close-modal" id="btn-close-ghost-modal" style="position: absolute; right: 0; top: 0;"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body">
         <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.6; word-break: keep-all; text-align: center;">
@@ -693,8 +696,8 @@
             <label style="display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">유령 기준 종료일</label>
             <input type="date" id="ghost-end-date" class="input-date" style="width: 100%; padding: 8px; border-radius: 6px; background: rgba(79, 172, 254, 0.15); border: 1px solid rgba(79, 172, 254, 0.5); color: #fff; box-shadow: 0 0 8px rgba(79, 172, 254, 0.25);">
           </div>
-          <div>
-            <button id="btn-search-ghosts" class="btn btn-primary" style="height: 36px; padding: 0 16px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px;">
+          <div class="search-btn-wrap" style="flex-shrink: 0;">
+            <button id="btn-search-ghosts" class="btn btn-primary" style="height: 36px; padding: 0 16px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; width: 100%; justify-content: center;">
               <i class="fa-solid fa-magnifying-glass"></i> 유령 검색
             </button>
           </div>
@@ -708,21 +711,25 @@
             </button>
           </div>
           
-          <div class="table-wrapper mini-table" style="max-height: 200px; overflow-y: auto;">
+          <!-- Empty State Container -->
+          <div id="ghost-finder-empty" style="text-align: center; color: var(--text-muted); padding: 30px 15px; border: 1px dashed rgba(255,255,255,0.1); border-radius: 8px; font-size: 13px; margin-top: 10px; word-break: keep-all; display: block;">
+            <i class="fa-solid fa-ghost" style="font-size: 24px; color: var(--text-muted); margin-bottom: 10px; display: block; opacity: 0.5;"></i>
+            <span id="ghost-finder-empty-text">유령 기준 날짜를 설정하고 검색해 주세요.</span>
+          </div>
+
+          <!-- Table Wrapper Container -->
+          <div id="ghost-finder-table-wrapper" class="table-wrapper mini-table" style="max-height: 200px; overflow-y: auto; display: none;">
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>닉네임</th>
-                  <th>첫 입장일</th>
-                  <th>퇴장 기록</th>
-                  <th>대화 수</th>
-                  <th>상태</th>
+                  <th style="width: 25%;">닉네임</th>
+                  <th style="width: 25%;">첫 입장일</th>
+                  <th style="width: 20%;">퇴장 기록</th>
+                  <th style="width: 15%;">대화 수</th>
+                  <th style="width: 15%;">상태</th>
                 </tr>
               </thead>
               <tbody id="ghost-finder-results-body">
-                <tr>
-                  <td colspan="5" class="empty-row" style="text-align: center; color: var(--text-muted); padding: 30px 0;">유령 기준 날짜를 설정하고 검색해 주세요.</td>
-                </tr>
               </tbody>
             </table>
           </div>

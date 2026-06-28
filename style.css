@@ -2754,8 +2754,22 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   }
 
   #ghost-finder-modal .data-table {
-    min-width: 520px !important;
-    table-layout: auto !important;
+    min-width: auto !important;
+    width: 100% !important;
+    table-layout: fixed !important;
+  }
+
+  #ghost-finder-modal .data-table th,
+  #ghost-finder-modal .data-table td {
+    padding: 6px 4px !important;
+    font-size: 11px !important;
+    word-break: break-all !important;
+    text-align: center !important;
+  }
+
+  #ghost-finder-modal .data-table th:first-child,
+  #ghost-finder-modal .data-table td:first-child {
+    text-align: left !important;
   }
 
   /* == Other Modals Table Scroll Fixes == */
