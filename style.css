@@ -423,7 +423,20 @@ h1, h2, h3, h4 {
   font-weight: 600;
 }
 
+.date-input-wrap {
+  width: 150px;
+  min-width: 0;
+  display: block;
+}
+
 .input-date {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
   background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -2174,6 +2187,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   .cond-item > .date-input-wrap,
   .cond-item > .condition-flex-row {
     width: 100% !important;
+    min-width: 0 !important;
   }
 
   .condition-flex-row {
@@ -2190,6 +2204,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   .select-box, 
   .capacity-field {
     width: 100% !important;
+    min-width: 0 !important;
   }
 
   /* Stack tab header buttons vertically on mobile for easier touch target */
@@ -2642,6 +2657,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   .select-box,
   .input-date {
     width: 100% !important;
+    min-width: 0 !important;
   }
 
   .condition-flex-row {
